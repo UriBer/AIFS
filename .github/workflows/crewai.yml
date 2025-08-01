@@ -1,0 +1,23 @@
+name: crewai-pipeline
+
+on:
+  push:
+    paths:
+      - "docs/spec/rfc/**"
+      - "agents/crewai/**"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r agents/crewai/requirements.txt
+      - name: Run CrewAI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN:   ${{ secrets.PAT }}
+        run: |
+          python agents/crewai/pipeline.py

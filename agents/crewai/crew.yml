@@ -1,0 +1,49 @@
+# agents/crewai/crew.yml
+#
+# Declarative definition of roles and tasks for the AIFS build pipeline.
+# Executed by CrewAI (https://github.com/joaomdmoura/crewai)
+
+roles:
+  - name: CodeGen
+    goal: >
+      Create idiomatic Rust or Go source files that implement the protobuf
+      objects, gRPC service stubs and business logic described in the RFC.
+    backstory: |
+      You are an experienced systems programmer. Output only code,
+      never prose. Use tonic/prost for Rust gRPC.
+    tools: [git_write]
+
+  - name: Reviewer
+    goal: Fix lint, format, and obvious security issues in generated code.
+    tools: [git_write, clippy]
+
+  - name: QA
+    goal: Write integration tests that cover at least 85 % of new lines.
+    tools: [git_write, pytest_runner]
+
+  - name: PRBot
+    goal: Summarise changes and open a GitHub pull-request.
+    tools: [git_push, github_pr]
+
+tasks:
+  - name: ReadSpec
+    description: Extract the latest object-model & wire-protocol sections
+                 from the RFC.
+    output_key: rfc_excerpt
+
+  - name: GenerateCode
+    agent: CodeGen
+    input: rfc_excerpt
+    depends_on: [ReadSpec]
+
+  - name: FixLint
+    agent: Reviewer
+    depends_on: [GenerateCode]
+
+  - name: WriteTests
+    agent: QA
+    depends_on: [GenerateCode]
+
+  - name: OpenPR
+    agent: PRBot
+    depends_on: [FixLint, WriteTests]
