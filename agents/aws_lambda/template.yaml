@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AI Agent using AWS Bedrock, Lambda, DynamoDB, S3, and API Gateway'
+
+Parameters:
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-3-sonnet-20240229-v1:0
+    Description: AWS Bedrock model ID to use
+  MaxRequestsPerMinute:
+    Type: Number
+    Default: 50
+    Description: Maximum requests per minute to Bedrock
+
+Resources:
+  # DynamoDB Table for conversation history
+  ConversationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ai_agent_conversations
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: conversation_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: conversation_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  # S3 Bucket for file storage
+  AgentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'ai-agent-storage-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
+            AllowedOrigins: ['*']
+            MaxAge: 3600
+
+  # Lambda Function
+  AgentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ai-agent-lambda
+      Handler: lambda_handler.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          CONVERSATION_TABLE: !Ref ConversationTable
+          MAX_REQUESTS_PER_MINUTE: !Ref MaxRequestsPerMinute
+          BUCKET_NAME: !Ref AgentBucket
+      Code:
+        S3Bucket: !Ref DeploymentBucket
+        S3Key: lambda-package.zip
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: AgentPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                Resource: !GetAtt ConversationTable.Arn
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - !GetAtt AgentBucket.Arn
+                  - !Sub '${AgentBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - 'bedrock:InvokeModel'
+                Resource: '*'
+
+  # API Gateway REST API
+  AgentApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ai-agent-api
+      Description: API for AI Agent
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # API Gateway Resource
+  AgentResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AgentApi
+      ParentId: !GetAtt AgentApi.RootResourceId
+      PathPart: 'chat'
+
+  # API Gateway Method
+  AgentMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AgentApi
+      ResourceId: !Ref AgentResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AgentFunction.Arn}/invocations'
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: AgentMethod
+    Properties:
+      RestApiId: !Ref AgentApi
+      StageName: prod
+
+  # Lambda Permission for API Gateway
+  LambdaApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref AgentFunction
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AgentApi}/*/POST/chat'
+
+Outputs:
+  ApiEndpoint:
+    Description: 'API Gateway endpoint URL for prod stage'
+    Value: !Sub 'https://${AgentApi}.execute-api.${AWS::Region}.amazonaws.com/prod/chat'
+  S3BucketName:
+    Description: 'S3 bucket for file storage'
+    Value: !Ref AgentBucket
+  DynamoDBTable:
+    Description: 'DynamoDB table for conversation history'
+    Value: !Ref ConversationTable
