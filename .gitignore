@@ -2,3 +2,6 @@
 .venv/*
 .env
 *.pyc
+.DSStore
+__pycache__/*
+/proto/*
