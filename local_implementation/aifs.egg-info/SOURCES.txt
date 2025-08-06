@@ -1,0 +1,17 @@
+README.md
+setup.py
+aifs/__init__.py
+aifs/asset.py
+aifs/client.py
+aifs/fuse.py
+aifs/metadata.py
+aifs/server.py
+aifs/storage.py
+aifs/vector_db.py
+aifs.egg-info/PKG-INFO
+aifs.egg-info/SOURCES.txt
+aifs.egg-info/dependency_links.txt
+aifs.egg-info/entry_points.txt
+aifs.egg-info/requires.txt
+aifs.egg-info/top_level.txt
+tests/test_basic.py
