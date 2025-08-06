@@ -2,6 +2,7 @@
 .venv/*
 .env
 *.pyc
-.DSStore
+.DS_Store
 __pycache__/*
 /proto/*
+local_implementation/aifs.egg-info/*
