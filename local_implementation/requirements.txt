@@ -1,5 +1,5 @@
 # Core dependencies
-grpcio==1.54.0
+grpcio==1.54.3
 grpcio-tools==1.54.0
 protobuf==4.22.3
 # Replacing blake3 with hashlib (standard library) to avoid Rust dependency
