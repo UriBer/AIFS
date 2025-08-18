@@ -4,7 +4,7 @@ Implements Ed25519 signatures for snapshots.
 """
 
 import os
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 from nacl.signing import SigningKey, VerifyKey
 from nacl.public import PrivateKey, PublicKey
 
@@ -65,12 +65,12 @@ class CryptoManager:
         
         return signature.signature, signature.signature.hex()
     
-    def verify_snapshot_signature(self, signature: bytes, merkle_root: str, 
+    def verify_snapshot_signature(self, signature: Union[bytes, str], merkle_root: str, 
                                 timestamp: str, namespace: str, public_key: bytes) -> bool:
         """Verify a snapshot signature.
         
         Args:
-            signature: Signature bytes
+            signature: Signature bytes or hex string
             merkle_root: Merkle root hash
             timestamp: ISO timestamp string
             namespace: Namespace identifier
@@ -82,15 +82,35 @@ class CryptoManager:
         try:
             verify_key = VerifyKey(public_key)
             
+            # Convert hex string to bytes if needed
+            if isinstance(signature, str):
+                signature_bytes = bytes.fromhex(signature)
+            else:
+                signature_bytes = signature
+            
             # Create message that was signed
             message = f"{merkle_root}:{timestamp}:{namespace}".encode()
             
             # Verify signature
-            verify_key.verify(message, signature)
+            verify_key.verify(message, signature_bytes)
             return True
             
-        except Exception:
+        except Exception as e:
             return False
+    
+    def sign_data(self, data: bytes) -> Tuple[bytes, str]:
+        """Sign arbitrary data.
+        
+        Args:
+            data: Data to sign
+            
+        Returns:
+            Tuple of (signature_bytes, signature_hex)
+        """
+        message = data
+        signature = self.signing_key.sign(message)
+        
+        return signature.signature, signature.signature.hex()
     
     def sign_asset_id(self, asset_id: str, metadata: str) -> Tuple[bytes, str]:
         """Sign an asset ID with metadata.
@@ -106,6 +126,33 @@ class CryptoManager:
         signature = self.signing_key.sign(message)
         
         return signature.signature, signature.signature.hex()
+    
+    def verify_signature(self, data: bytes, signature: Union[bytes, str], public_key: bytes) -> bool:
+        """Verify a signature for arbitrary data.
+        
+        Args:
+            data: Data that was signed
+            signature: Signature bytes or hex string
+            public_key: Public key for verification
+            
+        Returns:
+            True if signature is valid, False otherwise
+        """
+        try:
+            verify_key = VerifyKey(public_key)
+            
+            # Convert hex string to bytes if needed
+            if isinstance(signature, str):
+                signature_bytes = bytes.fromhex(signature)
+            else:
+                signature_bytes = signature
+            
+            # Verify signature
+            verify_key.verify(data, signature_bytes)
+            return True
+            
+        except Exception:
+            return False
     
     def verify_asset_signature(self, signature: bytes, asset_id: str, 
                              metadata: str, public_key: bytes) -> bool:
@@ -140,6 +187,14 @@ class CryptoManager:
         verify_key = signing_key.verify_key
         
         return bytes(signing_key), bytes(verify_key)
+    
+    def generate_private_key(self) -> bytes:
+        """Generate a new Ed25519 private key.
+        
+        Returns:
+            Private key bytes
+        """
+        return self.generate_key_pair()[0]
     
     @staticmethod
     def key_from_seed(seed: bytes) -> bytes:

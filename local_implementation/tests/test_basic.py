@@ -22,7 +22,11 @@ class TestBasicFunctionality(unittest.TestCase):
         self.test_dir = tempfile.mkdtemp()
         self.storage = StorageBackend(self.test_dir)
         self.vector_db = VectorDB(self.test_dir, dimension=128)
-        self.metadata = MetadataStore(self.test_dir)
+        
+        # Create a proper database path within the test directory
+        self.db_path = os.path.join(self.test_dir, "metadata.db")
+        self.metadata = MetadataStore(self.db_path)
+        
         self.crypto = CryptoManager()
     
     def tearDown(self):
@@ -88,11 +92,12 @@ class TestBasicFunctionality(unittest.TestCase):
         
         # Test signing
         data = b"test data"
-        signature = self.crypto.sign_data(data)
-        self.assertIsNotNone(signature)
+        signature_bytes, signature_hex = self.crypto.sign_data(data)
+        self.assertIsNotNone(signature_bytes)
+        self.assertIsNotNone(signature_hex)
         
         # Test verification
-        is_valid = self.crypto.verify_signature(data, signature, public_key)
+        is_valid = self.crypto.verify_signature(data, signature_bytes, public_key)
         self.assertTrue(is_valid)
 
 

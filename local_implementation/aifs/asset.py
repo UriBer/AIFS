@@ -211,28 +211,45 @@ class AssetManager:
         
         return snapshot
     
-    def verify_snapshot(self, snapshot_id: str, public_key: bytes) -> bool:
-        """Verify a snapshot's Ed25519 signature.
+    def verify_snapshot(self, snapshot_id: str, public_key: bytes = None) -> bool:
+        """Verify a snapshot's signature.
         
         Args:
-            snapshot_id: Snapshot ID
-            public_key: Public key for verification
+            snapshot_id: ID of the snapshot to verify
+            public_key: Public key for verification (uses default if None)
             
         Returns:
             True if signature is valid, False otherwise
         """
-        snapshot = self.metadata_db.get_snapshot(snapshot_id)
-        if not snapshot:
+        try:
+            snapshot = self.metadata_db.get_snapshot(snapshot_id)
+            if not snapshot:
+                return False
+            
+            # Get the public key to use
+            if public_key is None:
+                public_key = self.crypto_manager.get_public_key()
+            
+            # Extract signature and data
+            signature_hex = snapshot.get("signature")
+            if not signature_hex:
+                return False
+            
+            # Reconstruct the data that was signed
+            merkle_root = snapshot.get("merkle_root", "")
+            timestamp = snapshot.get("created_at", "")
+            namespace = snapshot.get("namespace", "")
+            
+            # Verify the signature
+            is_valid = self.crypto_manager.verify_snapshot_signature(
+                signature_hex, merkle_root, timestamp, namespace, public_key
+            )
+            
+            return is_valid
+            
+        except Exception as e:
+            print(f"Snapshot verification failed: {e}")
             return False
-        
-        # Verify signature
-        return self.crypto_manager.verify_snapshot_signature(
-            bytes.fromhex(snapshot["signature"]),
-            snapshot["merkle_root"],
-            snapshot["created_at"],
-            snapshot["namespace"],
-            public_key
-        )
     
     def get_public_key(self) -> bytes:
         """Get the public key for snapshot verification.

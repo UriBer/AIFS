@@ -180,6 +180,35 @@ class TestCryptoManager(unittest.TestCase):
         )
         self.assertTrue(is_valid)
 
+    def test_simple_sign_verify(self):
+        """Test simple signing and verification without database."""
+        # Test data
+        merkle_root = "test_merkle_root_123"
+        timestamp = "2025-08-18T17:45:10.682922"
+        namespace = "test-namespace"
+        
+        # Sign the data
+        signature_bytes, signature_hex = self.crypto_manager.sign_snapshot(
+            merkle_root, timestamp, namespace
+        )
+        
+        # Get public key
+        public_key = self.crypto_manager.get_public_key()
+        
+        # Verify the signature
+        is_valid = self.crypto_manager.verify_snapshot_signature(
+            signature_hex, merkle_root, timestamp, namespace, public_key
+        )
+        
+        self.assertTrue(is_valid)
+        
+        # Test with wrong data (should fail)
+        is_valid_wrong = self.crypto_manager.verify_snapshot_signature(
+            signature_hex, "wrong_merkle_root", timestamp, namespace, public_key
+        )
+        
+        self.assertFalse(is_valid_wrong)
+
 
 if __name__ == "__main__":
     unittest.main()

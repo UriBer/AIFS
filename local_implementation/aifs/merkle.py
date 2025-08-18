@@ -99,38 +99,41 @@ class MerkleTree:
         """
         return self.root.hash_value
     
-    def get_proof(self, asset_id: str) -> Optional[List[Tuple[str, bool]]]:
-        """Get Merkle proof for an asset ID.
+    def get_proof(self, asset_id: str) -> Optional[List[Tuple[str, str]]]:
+        """Get Merkle proof for a specific asset.
         
         Args:
-            asset_id: Asset ID (SHA-256 hash)
+            asset_id: The asset ID to get proof for
             
         Returns:
-            List of (hash, is_right) tuples representing the proof path,
-            or None if asset not found
+            List of (hash, direction) tuples representing the proof path, or None if asset not found
         """
-        if asset_id not in self.asset_ids:
+        if not self.asset_ids or asset_id not in self.asset_ids:
             return None
         
         proof = []
-        current = self.root
         
-        # Navigate to the leaf node
-        while not current.is_leaf:
-            if current.left and asset_id in self._get_leaf_hashes(current.left):
+        # Start from the root and navigate to the leaf
+        current_node = self.root
+        
+        # Build the path from root to leaf
+        while not current_node.is_leaf:
+            if current_node.left and asset_id in self._get_leaf_hashes(current_node.left):
                 # Asset is in left subtree
-                if current.right:
-                    proof.append((current.right.hash_value, True))  # Right sibling
-                current = current.left
-            elif current.right and asset_id in self._get_leaf_hashes(current.right):
+                if current_node.right:
+                    proof.append((current_node.right.hash_value, "right"))
+                current_node = current_node.left
+            elif current_node.right and asset_id in self._get_leaf_hashes(current_node.right):
                 # Asset is in right subtree
-                if current.left:
-                    proof.append((current.left.hash_value, False))  # Left sibling
-                current = current.right
+                if current_node.left:
+                    proof.append((current_node.left.hash_value, "left"))
+                current_node = current_node.right
             else:
                 # Asset not found in this subtree
                 return None
         
+        # Reverse the proof so it goes from leaf to root
+        proof.reverse()
         return proof
     
     def _get_leaf_hashes(self, node: MerkleNode) -> List[str]:
@@ -152,26 +155,31 @@ class MerkleTree:
             leaves.extend(self._get_leaf_hashes(node.right))
         return leaves
     
-    def verify_proof(self, asset_id: str, proof: List[Tuple[str, bool]], root_hash: str) -> bool:
+    def verify_proof(self, asset_id: str, proof: List[Tuple[str, str]], root_hash: str) -> bool:
         """Verify a Merkle proof.
         
         Args:
-            asset_id: Asset ID being proven
-            proof: Merkle proof from get_proof()
-            root_hash: Expected root hash
+            asset_id: The asset ID being verified
+            proof: List of (hash, direction) tuples from get_proof
+            root_hash: The expected root hash
             
         Returns:
             True if proof is valid, False otherwise
         """
+        if not self.asset_ids or asset_id not in self.asset_ids:
+            return False
+        
+        # Start with the asset hash
         current_hash = asset_id
         
-        for sibling_hash, is_right in proof:
-            if is_right:
-                # Sibling is on the right, so current is on the left
-                current_hash = self._hash_pair(current_hash, sibling_hash)
-            else:
-                # Sibling is on the left, so current is on the right
+        # Reconstruct the path to the root
+        for sibling_hash, direction in proof:
+            if direction == "left":
+                # Current hash is right child, combine with left sibling
                 current_hash = self._hash_pair(sibling_hash, current_hash)
+            elif direction == "right":
+                # Current hash is left child, combine with right sibling
+                current_hash = self._hash_pair(current_hash, sibling_hash)
         
         return current_hash == root_hash
     

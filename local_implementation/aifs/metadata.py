@@ -26,70 +26,85 @@ class MetadataStore:
         self._init_db()
     
     def _init_db(self):
-        """Initialize database schema."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # Create assets table
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS assets (
-            asset_id TEXT PRIMARY KEY,
-            kind TEXT NOT NULL,
-            size INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            metadata TEXT
-        )
-        """)
-        
-        # Create lineage table for parent-child relationships
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS lineage (
-            child_id TEXT NOT NULL,
-            parent_id TEXT NOT NULL,
-            transform_name TEXT,
-            transform_digest TEXT,
-            created_at TEXT NOT NULL,
-            PRIMARY KEY (child_id, parent_id),
-            FOREIGN KEY (child_id) REFERENCES assets(asset_id),
-            FOREIGN KEY (parent_id) REFERENCES assets(asset_id)
-        )
-        """)
-        
-        # Create snapshots table with signature support
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS snapshots (
-            snapshot_id TEXT PRIMARY KEY,
-            namespace TEXT NOT NULL,
-            merkle_root TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            signature TEXT NOT NULL,
-            metadata TEXT
-        )
-        """)
-        
-        # Create snapshot_assets table for snapshot contents
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS snapshot_assets (
-            snapshot_id TEXT NOT NULL,
-            asset_id TEXT NOT NULL,
-            PRIMARY KEY (snapshot_id, asset_id),
-            FOREIGN KEY (snapshot_id) REFERENCES snapshots(snapshot_id),
-            FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
-        )
-        """)
-        
-        # Create namespaces table for namespace management
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS namespaces (
-            namespace_id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            metadata TEXT
-        )
-        """)
-        
-        conn.commit()
-        conn.close()
+        """Initialize the SQLite database."""
+        try:
+            # Ensure the directory exists
+            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+            
+            # Create database connection
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Create tables
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS assets (
+                    asset_id TEXT PRIMARY KEY,
+                    kind TEXT NOT NULL,
+                    size INTEGER NOT NULL,
+                    metadata TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS lineage (
+                    child_id TEXT,
+                    parent_id TEXT,
+                    transform_name TEXT,
+                    transform_digest TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (child_id) REFERENCES assets (asset_id),
+                    FOREIGN KEY (parent_id) REFERENCES assets (asset_id)
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS snapshots (
+                    snapshot_id TEXT PRIMARY KEY,
+                    namespace TEXT NOT NULL,
+                    merkle_root TEXT NOT NULL,
+                    metadata TEXT,
+                    signature TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS snapshot_assets (
+                    snapshot_id TEXT NOT NULL,
+                    asset_id TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (snapshot_id, asset_id),
+                    FOREIGN KEY (snapshot_id) REFERENCES snapshots (snapshot_id),
+                    FOREIGN KEY (asset_id) REFERENCES assets (asset_id)
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS namespaces (
+                    namespace_id TEXT PRIMARY KEY,
+                    name TEXT UNIQUE NOT NULL,
+                    description TEXT,
+                    metadata TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Create indexes for better performance
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_assets_kind ON assets (kind)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_lineage_asset_id ON lineage (asset_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_lineage_parent_id ON lineage (parent_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_namespace ON snapshots (namespace)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_snapshot_assets_snapshot ON snapshot_assets (snapshot_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_snapshot_assets_asset ON snapshot_assets (asset_id)')
+            
+            conn.commit()
+            conn.close()
+            
+        except Exception as e:
+            print(f"Warning: Failed to initialize metadata database: {e}")
+            print(f"Database path: {self.db_path}")
+            # Continue without database - some features will be limited
     
     def add_asset(self, asset_id: str, kind: str, size: int, metadata: Optional[Dict] = None) -> None:
         """Add asset metadata.
@@ -107,8 +122,8 @@ class MetadataStore:
         metadata_json = json.dumps(metadata) if metadata else None
         
         cursor.execute(
-            "INSERT OR REPLACE INTO assets (asset_id, kind, size, created_at, metadata) VALUES (?, ?, ?, ?, ?)",
-            (asset_id, kind, size, created_at, metadata_json)
+            "INSERT OR REPLACE INTO assets (asset_id, kind, size, metadata, created_at) VALUES (?, ?, ?, ?, ?)",
+            (asset_id, kind, size, metadata_json, created_at)
         )
         
         conn.commit()
@@ -134,7 +149,7 @@ class MetadataStore:
         if not row:
             return None
         
-        asset_id, kind, size, created_at, metadata_json = row
+        asset_id, kind, size, metadata_json, created_at = row
         metadata = json.loads(metadata_json) if metadata_json else {}
         
         return {
@@ -193,7 +208,7 @@ class MetadataStore:
         
         parents = []
         for row in rows:
-            asset_id, kind, size, created_at, metadata_json, transform_name, transform_digest = row
+            asset_id, kind, size, metadata_json, created_at, transform_name, transform_digest = row
             metadata = json.loads(metadata_json) if metadata_json else {}
             
             parents.append({
@@ -232,7 +247,7 @@ class MetadataStore:
         
         children = []
         for row in rows:
-            asset_id, kind, size, created_at, metadata_json, transform_name, transform_digest = row
+            asset_id, kind, size, metadata_json, created_at, transform_name, transform_digest = row
             metadata = json.loads(metadata_json) if metadata_json else {}
             
             children.append({
@@ -257,7 +272,7 @@ class MetadataStore:
             metadata: Optional metadata dictionary
             signature: Ed25519 signature of the snapshot
             created_at: ISO timestamp string
-            
+        
         Returns:
             Snapshot ID
         """
@@ -276,9 +291,9 @@ class MetadataStore:
         snapshot_id = hashlib.sha256(snapshot_id_input.encode()).hexdigest()[:32]  # 128-bit equivalent
         
         cursor.execute(
-            "INSERT INTO snapshots (snapshot_id, namespace, merkle_root, created_at, signature, metadata) "
+            "INSERT INTO snapshots (snapshot_id, namespace, merkle_root, metadata, signature, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?)",
-            (snapshot_id, namespace, merkle_root, created_at, signature, metadata_json)
+            (snapshot_id, namespace, merkle_root, metadata_json, signature, created_at)
         )
         
         conn.commit()
@@ -323,7 +338,7 @@ class MetadataStore:
             conn.close()
             return None
         
-        snapshot_id, namespace, merkle_root, created_at, signature, metadata_json = row
+        snapshot_id, namespace, merkle_root, metadata_json, signature, created_at = row
         metadata = json.loads(metadata_json) if metadata_json else {}
         
         # Get assets in snapshot
@@ -339,14 +354,14 @@ class MetadataStore:
         
         assets = []
         for row in asset_rows:
-            asset_id, kind, size, created_at, metadata_json = row
+            asset_id, kind, size, metadata_json, asset_created_at = row
             asset_metadata = json.loads(metadata_json) if metadata_json else {}
             
             assets.append({
                 "asset_id": asset_id,
                 "kind": kind,
                 "size": size,
-                "created_at": created_at,
+                "created_at": asset_created_at,
                 "metadata": asset_metadata
             })
         
@@ -410,12 +425,13 @@ class MetadataStore:
         if not row:
             return None
         
-        namespace_id, name, created_at, metadata_json = row
+        namespace_id, name, description, metadata_json, created_at = row
         metadata = json.loads(metadata_json) if metadata_json else {}
         
         return {
             "namespace_id": namespace_id,
             "name": name,
+            "description": description,
             "created_at": created_at,
             "metadata": metadata
         }
@@ -436,12 +452,13 @@ class MetadataStore:
         
         namespaces = []
         for row in rows:
-            namespace_id, name, created_at, metadata_json = row
+            namespace_id, name, description, metadata_json, created_at = row
             metadata = json.loads(metadata_json) if metadata_json else {}
             
             namespaces.append({
                 "namespace_id": namespace_id,
                 "name": name,
+                "description": description,
                 "created_at": created_at,
                 "metadata": metadata
             })

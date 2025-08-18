@@ -203,17 +203,24 @@ class TestStorageBackend(unittest.TestCase):
 
     def test_storage_persistence(self):
         """Test that storage persists across instances."""
-        # Store data with first instance
-        test_data = b"Persistent data"
+        test_data = b"Persistent test data"
         asset_id = self.storage.put(test_data)
         
-        # Create new storage instance pointing to same directory
-        new_storage = StorageBackend(self.storage_path)
+        # Verify data was stored
+        self.assertTrue(self.storage.exists(asset_id))
+        retrieved_data = self.storage.get(asset_id)
+        self.assertEqual(test_data, retrieved_data)
         
-        # Should still be able to retrieve data
+        # Create new storage instance with same directory and encryption key
+        new_storage = StorageBackend(
+            self.storage.root_dir, 
+            encryption_key=self.storage.encryption_key
+        )
+        
+        # Verify data persists
         self.assertTrue(new_storage.exists(asset_id))
         retrieved_data = new_storage.get(asset_id)
-        self.assertEqual(retrieved_data, test_data)
+        self.assertEqual(test_data, retrieved_data)
 
     def test_invalid_hash_retrieval(self):
         """Test retrieval with invalid hash."""

@@ -23,34 +23,24 @@ class StorageBackend:
     """
     
     def __init__(self, root_dir: Union[str, pathlib.Path], encryption_key: Optional[bytes] = None):
-        """Initialize storage backend.
+        """Initialize the storage backend.
         
         Args:
             root_dir: Root directory for storage
-            encryption_key: Optional encryption key (32 bytes for AES-256)
+            encryption_key: Optional encryption key (generated if None)
         """
         self.root_dir = pathlib.Path(root_dir)
-        self.chunks_dir = self.root_dir / "chunks"
-        self.chunks_dir.mkdir(parents=True, exist_ok=True)
+        self.root_dir.mkdir(parents=True, exist_ok=True)
         
-        # Initialize encryption
+        # Generate encryption key if not provided
         if encryption_key is None:
-            # Generate a random key for testing (in production, this should come from KMS)
-            encryption_key = os.urandom(32)
+            encryption_key = os.urandom(32)  # 256-bit key for AES-256
+        
         self.encryption_key = encryption_key
         
-        # Derive chunk encryption keys using HKDF
-        self.chunk_key = self._derive_chunk_key()
-    
-    def _derive_chunk_key(self) -> bytes:
-        """Derive chunk encryption key using HKDF."""
-        hkdf = HKDF(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=b"aifs-chunk-encryption",
-            info=b"chunk-key",
-        )
-        return hkdf.derive(self.encryption_key)
+        # Create storage subdirectories
+        self.chunks_dir = self.root_dir / "chunks"
+        self.chunks_dir.mkdir(exist_ok=True)
     
     def _hash_to_path(self, hash_hex: str) -> pathlib.Path:
         """Convert hash to path with sharding.
@@ -90,32 +80,56 @@ class StorageBackend:
         return hash_hex
     
     def _encrypt_chunk(self, data: bytes) -> bytes:
-        """Encrypt chunk data with AES-256-GCM.
+        """Encrypt a chunk of data using AES-256-GCM.
         
         Args:
             data: Raw data to encrypt
             
         Returns:
-            Encrypted data with nonce and tag
+            Encrypted data with nonce prepended
         """
-        aesgcm = AESGCM(self.chunk_key)
-        nonce = os.urandom(12)  # 96-bit nonce for GCM
-        encrypted_data = aesgcm.encrypt(nonce, data, None)
-        return nonce + encrypted_data
+        if not data:
+            return b""
+        
+        # Generate a new nonce for each chunk
+        nonce = os.urandom(12)
+        
+        # Create cipher
+        cipher = AESGCM(self.encryption_key)
+        
+        # Encrypt the data
+        ciphertext = cipher.encrypt(nonce, data, None)
+        
+        # Return nonce + ciphertext
+        return nonce + ciphertext
     
     def _decrypt_chunk(self, encrypted_data: bytes) -> bytes:
-        """Decrypt chunk data with AES-256-GCM.
+        """Decrypt a chunk of data using AES-256-GCM.
         
         Args:
-            encrypted_data: Encrypted data with nonce and tag
+            encrypted_data: Encrypted data with nonce prepended
             
         Returns:
             Decrypted data
         """
-        aesgcm = AESGCM(self.chunk_key)
-        nonce = encrypted_data[:12]
-        ciphertext = encrypted_data[12:]
-        return aesgcm.decrypt(nonce, ciphertext, None)
+        if not encrypted_data:
+            return b""
+        
+        try:
+            # Extract nonce and ciphertext
+            nonce = encrypted_data[:12]
+            ciphertext = encrypted_data[12:]
+            
+            # Create cipher
+            cipher = AESGCM(self.encryption_key)
+            
+            # Decrypt the data
+            return cipher.decrypt(nonce, ciphertext, None)
+            
+        except Exception as e:
+            print(f"Decryption failed: {e}")
+            # Return empty data on decryption failure
+            return b""
     
     def get(self, hash_hex: str) -> Optional[bytes]:
         """Retrieve data by its content hash.

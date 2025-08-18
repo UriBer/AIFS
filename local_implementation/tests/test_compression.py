@@ -77,12 +77,38 @@ class TestCompressionService(unittest.TestCase):
         # Test data
         test_data = b"Streaming compression test data. " * 1000
         
-        # Compress in streaming fashion
-        compressed_data = self.compression_service.compress_stream(test_data, chunk_size=1000)
+        # Compress in streaming fashion using simple method
+        compressed_data = self.compression_service.compress_stream_simple(test_data)
         
         # Decompress
         decompressed_data = self.compression_service.decompress(compressed_data)
-        self.assertEqual(decompressed_data, test_data)
+        
+        # Verify data integrity
+        self.assertEqual(test_data, decompressed_data)
+        
+        # Test that compression actually reduced size
+        self.assertLess(len(compressed_data), len(test_data))
+        
+        # Test compression ratio
+        ratio = self.compression_service.get_compression_ratio(len(test_data), len(compressed_data))
+        self.assertLess(ratio, 1.0)
+    
+    def test_advanced_stream_compression(self):
+        """Test advanced streaming compression with compressobj/decompressobj."""
+        # Test data
+        test_data = b"Advanced streaming compression test data. " * 1000
+        
+        # Compress using advanced streaming
+        compressed_data = self.compression_service.compress_stream(test_data, chunk_size=1000)
+        
+        # Decompress using streaming decompression
+        decompressed_data = self.compression_service.decompress_stream(compressed_data, chunk_size=1000)
+        
+        # Verify data integrity
+        self.assertEqual(test_data, decompressed_data)
+        
+        # Test that compression actually reduced size
+        self.assertLess(len(compressed_data), len(test_data))
 
     def test_compression_detection(self):
         """Test compression detection."""
