@@ -1,6 +1,6 @@
 """AIFS Metadata Store
 
-Implements metadata storage and lineage tracking using SQLite.
+Implements metadata storage and lineage tracking using SQLite with signature support.
 """
 
 import json
@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Any, Union
 class MetadataStore:
     """Metadata store for AIFS using SQLite.
     
-    Stores asset metadata and lineage information.
+    Stores asset metadata, lineage information, and Ed25519 signatures for snapshots.
     """
     
     def __init__(self, db_path: str):
@@ -55,13 +55,14 @@ class MetadataStore:
         )
         """)
         
-        # Create snapshots table
+        # Create snapshots table with signature support
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS snapshots (
             snapshot_id TEXT PRIMARY KEY,
             namespace TEXT NOT NULL,
             merkle_root TEXT NOT NULL,
             created_at TEXT NOT NULL,
+            signature TEXT NOT NULL,
             metadata TEXT
         )
         """)
@@ -74,6 +75,16 @@ class MetadataStore:
             PRIMARY KEY (snapshot_id, asset_id),
             FOREIGN KEY (snapshot_id) REFERENCES snapshots(snapshot_id),
             FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+        )
+        """)
+        
+        # Create namespaces table for namespace management
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS namespaces (
+            namespace_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            metadata TEXT
         )
         """)
         
@@ -236,13 +247,16 @@ class MetadataStore:
         
         return children
     
-    def create_snapshot(self, namespace: str, merkle_root: str, metadata: Optional[Dict] = None) -> str:
-        """Create a new snapshot.
+    def create_snapshot(self, namespace: str, merkle_root: str, metadata: Optional[Dict] = None,
+                       signature: str = None, created_at: str = None) -> str:
+        """Create a new snapshot with Ed25519 signature.
         
         Args:
             namespace: Namespace for the snapshot
             merkle_root: Merkle root hash
             metadata: Optional metadata dictionary
+            signature: Ed25519 signature of the snapshot
+            created_at: ISO timestamp string
             
         Returns:
             Snapshot ID
@@ -252,7 +266,9 @@ class MetadataStore:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        created_at = datetime.utcnow().isoformat()
+        if created_at is None:
+            created_at = datetime.utcnow().isoformat()
+        
         metadata_json = json.dumps(metadata) if metadata else None
         
         # Generate snapshot ID from merkle root and timestamp
@@ -260,9 +276,9 @@ class MetadataStore:
         snapshot_id = hashlib.sha256(snapshot_id_input.encode()).hexdigest()[:32]  # 128-bit equivalent
         
         cursor.execute(
-            "INSERT INTO snapshots (snapshot_id, namespace, merkle_root, created_at, metadata) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (snapshot_id, namespace, merkle_root, created_at, metadata_json)
+            "INSERT INTO snapshots (snapshot_id, namespace, merkle_root, created_at, signature, metadata) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (snapshot_id, namespace, merkle_root, created_at, signature, metadata_json)
         )
         
         conn.commit()
@@ -289,7 +305,7 @@ class MetadataStore:
         conn.close()
     
     def get_snapshot(self, snapshot_id: str) -> Optional[Dict]:
-        """Get snapshot metadata.
+        """Get snapshot metadata with signature.
         
         Args:
             snapshot_id: Snapshot ID
@@ -307,7 +323,7 @@ class MetadataStore:
             conn.close()
             return None
         
-        snapshot_id, namespace, merkle_root, created_at, metadata_json = row
+        snapshot_id, namespace, merkle_root, created_at, signature, metadata_json = row
         metadata = json.loads(metadata_json) if metadata_json else {}
         
         # Get assets in snapshot
@@ -339,6 +355,95 @@ class MetadataStore:
             "namespace": namespace,
             "merkle_root": merkle_root,
             "created_at": created_at,
+            "signature": signature,
             "metadata": metadata,
             "assets": assets
         }
+    
+    def create_namespace(self, name: str, metadata: Optional[Dict] = None) -> str:
+        """Create a new namespace.
+        
+        Args:
+            name: Namespace name
+            metadata: Optional metadata dictionary
+            
+        Returns:
+            Namespace ID
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        created_at = datetime.utcnow().isoformat()
+        metadata_json = json.dumps(metadata) if metadata else None
+        
+        # Use name as ID for simplicity
+        namespace_id = name
+        
+        cursor.execute(
+            "INSERT OR REPLACE INTO namespaces (namespace_id, name, created_at, metadata) "
+            "VALUES (?, ?, ?, ?)",
+            (namespace_id, name, created_at, metadata_json)
+        )
+        
+        conn.commit()
+        conn.close()
+        
+        return namespace_id
+    
+    def get_namespace(self, namespace_id: str) -> Optional[Dict]:
+        """Get namespace information.
+        
+        Args:
+            namespace_id: Namespace ID
+            
+        Returns:
+            Namespace dictionary or None if not found
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM namespaces WHERE namespace_id = ?", (namespace_id,))
+        row = cursor.fetchone()
+        
+        conn.close()
+        
+        if not row:
+            return None
+        
+        namespace_id, name, created_at, metadata_json = row
+        metadata = json.loads(metadata_json) if metadata_json else {}
+        
+        return {
+            "namespace_id": namespace_id,
+            "name": name,
+            "created_at": created_at,
+            "metadata": metadata
+        }
+    
+    def list_namespaces(self) -> List[Dict]:
+        """List all namespaces.
+        
+        Returns:
+            List of namespace dictionaries
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM namespaces ORDER BY created_at DESC")
+        rows = cursor.fetchall()
+        
+        conn.close()
+        
+        namespaces = []
+        for row in rows:
+            namespace_id, name, created_at, metadata_json = row
+            metadata = json.loads(metadata_json) if metadata_json else {}
+            
+            namespaces.append({
+                "namespace_id": namespace_id,
+                "name": name,
+                "created_at": created_at,
+                "metadata": metadata
+            })
+        
+        return namespaces

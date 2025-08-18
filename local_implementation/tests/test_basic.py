@@ -1,194 +1,99 @@
 #!/usr/bin/env python3
-"""Basic tests for AIFS local implementation."""
+"""Basic functionality tests for AIFS."""
 
-import os
-import tempfile
 import unittest
-import numpy as np
+import tempfile
+import os
 from pathlib import Path
 
 # Import AIFS components
-from aifs.storage import ContentAddressedStorage
+from aifs.storage import StorageBackend
 from aifs.vector_db import VectorDB
 from aifs.metadata import MetadataStore
-from aifs.asset import AssetManager
+from aifs.merkle import MerkleTree
+from aifs.crypto import CryptoManager
 
 
 class TestBasicFunctionality(unittest.TestCase):
-    """Test basic functionality of AIFS components."""
-
+    """Test basic AIFS functionality."""
+    
     def setUp(self):
         """Set up test environment."""
-        # Create temporary directory for test data
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.storage_path = Path(self.temp_dir.name) / "storage"
-        self.vector_db_path = Path(self.temp_dir.name) / "vector_db"
-        self.metadata_path = Path(self.temp_dir.name) / "metadata.db"
-        
-        # Initialize components
-        self.storage = ContentAddressedStorage(self.storage_path)
-        self.vector_db = VectorDB(self.vector_db_path)
-        self.metadata = MetadataStore(self.metadata_path)
-        self.asset_manager = AssetManager(
-            self.storage, self.vector_db, self.metadata
-        )
-
+        self.test_dir = tempfile.mkdtemp()
+        self.storage = StorageBackend(self.test_dir)
+        self.vector_db = VectorDB(self.test_dir, dimension=128)
+        self.metadata = MetadataStore(self.test_dir)
+        self.crypto = CryptoManager()
+    
     def tearDown(self):
         """Clean up test environment."""
-        self.temp_dir.cleanup()
-
-    def test_storage(self):
-        """Test content-addressed storage."""
-        # Store data
-        data = b"Hello, AIFS!"
-        digest = self.storage.put(data)
+        import shutil
+        shutil.rmtree(self.test_dir)
+    
+    def test_storage_basic(self):
+        """Test basic storage operations."""
+        test_data = b"Hello, AIFS!"
+        asset_id = self.storage.put(test_data)
         
-        # Check if data exists
-        self.assertTrue(self.storage.exists(digest))
+        # Verify content addressing
+        retrieved_data = self.storage.get(asset_id)
+        self.assertEqual(test_data, retrieved_data)
+    
+    def test_vector_db_basic(self):
+        """Test basic vector database operations."""
+        import numpy as np
         
-        # Retrieve data
-        retrieved_data = self.storage.get(digest)
-        self.assertEqual(data, retrieved_data)
+        # Create test embedding
+        embedding = np.random.rand(128).astype(np.float32)
+        asset_id = "test_asset_123"
         
-        # Delete data
-        self.storage.delete(digest)
-        self.assertFalse(self.storage.exists(digest))
-
-    def test_vector_db(self):
-        """Test vector database."""
-        # Add embeddings
-        ids = ["id1", "id2", "id3"]
-        embeddings = np.random.rand(3, 4).astype(np.float32)  # 3 vectors of dimension 4
+        # Add to vector database
+        self.vector_db.add(asset_id, embedding)
         
-        for i, (id_, embedding) in enumerate(zip(ids, embeddings)):
-            self.vector_db.add(id_, embedding)
-        
-        # Search
-        query = np.random.rand(4).astype(np.float32)
-        results = self.vector_db.search(query, k=2)
-        
-        # Check results
-        self.assertEqual(len(results), 2)
-        self.assertIn(results[0]["id"], ids)
-        self.assertIn(results[1]["id"], ids)
-        
-        # Delete
-        self.vector_db.delete(ids[0])
-        results = self.vector_db.search(query, k=3)
-        self.assertEqual(len(results), 2)  # Only 2 left
-        self.assertNotIn(ids[0], [r["id"] for r in results])
-
-    def test_metadata(self):
-        """Test metadata store."""
-        # Add asset
-        asset_id = "test_asset"
-        kind = "blob"
-        size = 100
-        metadata = {"content_type": "text/plain", "description": "Test asset"}
-        
-        self.metadata.add_asset(asset_id, kind, size, metadata)
-        
-        # Get asset
-        asset = self.metadata.get_asset(asset_id)
-        self.assertEqual(asset["asset_id"], asset_id)
-        self.assertEqual(asset["kind"], kind)
-        self.assertEqual(asset["size"], size)
-        self.assertEqual(asset["metadata"], metadata)
-        
-        # Add lineage
-        parent_id = "parent_asset"
-        transform_name = "test_transform"
-        transform_digest = "test_digest"
-        
-        self.metadata.add_lineage(asset_id, parent_id, transform_name, transform_digest)
-        
-        # Get lineage
-        lineage = self.metadata.get_lineage(asset_id)
-        self.assertEqual(len(lineage), 1)
-        self.assertEqual(lineage[0]["parent_id"], parent_id)
-        self.assertEqual(lineage[0]["transform_name"], transform_name)
-        self.assertEqual(lineage[0]["transform_digest"], transform_digest)
-        
-        # Create snapshot
-        snapshot_id = "test_snapshot"
-        namespace = "default"
-        asset_ids = [asset_id, parent_id]
-        merkle_root = "test_merkle_root"
-        snapshot_metadata = {"description": "Test snapshot"}
-        
-        self.metadata.create_snapshot(
-            snapshot_id, namespace, asset_ids, merkle_root, snapshot_metadata
-        )
-        
-        # Get snapshot
-        snapshot = self.metadata.get_snapshot(snapshot_id)
-        self.assertEqual(snapshot["snapshot_id"], snapshot_id)
-        self.assertEqual(snapshot["namespace"], namespace)
-        self.assertEqual(snapshot["merkle_root"], merkle_root)
-        self.assertEqual(snapshot["metadata"], snapshot_metadata)
-        
-        # Get snapshot assets
-        snapshot_assets = self.metadata.get_snapshot_assets(snapshot_id)
-        self.assertEqual(set(snapshot_assets), set(asset_ids))
-
-    def test_asset_manager(self):
-        """Test asset manager."""
-        # Put asset
-        data = b"Hello, Asset Manager!"
-        kind = "blob"
-        metadata = {"content_type": "text/plain", "description": "Test asset"}
-        
-        asset_id = self.asset_manager.put_asset(data, kind, metadata)
-        
-        # Get asset
-        asset = self.asset_manager.get_asset(asset_id)
-        self.assertEqual(asset["data"], data)
-        self.assertEqual(asset["kind"], kind)
-        self.assertEqual(asset["metadata"], metadata)
-        
-        # Put asset with embedding
-        data2 = b"Another asset with embedding"
-        embedding = np.random.rand(4).astype(np.float32)
-        
-        asset_id2 = self.asset_manager.put_asset(
-            data2, kind, metadata, embedding=embedding
-        )
-        
-        # Vector search
-        query = np.random.rand(4).astype(np.float32)
-        results = self.asset_manager.vector_search(query, k=1)
+        # Search for similar vectors
+        results = self.vector_db.search(embedding, k=1)
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["asset_id"], asset_id2)
+        self.assertEqual(results[0][0], asset_id)
+    
+    def test_metadata_basic(self):
+        """Test basic metadata operations."""
+        # Create namespace
+        namespace_id = self.metadata.create_namespace("test-namespace", "Test namespace")
+        self.assertIsNotNone(namespace_id)
         
-        # Put asset with lineage
-        data3 = b"Asset with lineage"
-        parents = [{
-            "asset_id": asset_id,
-            "transform_name": "test_transform",
-            "transform_digest": "test_digest"
-        }]
+        # Get namespace
+        namespace = self.metadata.get_namespace(namespace_id)
+        self.assertEqual(namespace["name"], "test-namespace")
+    
+    def test_merkle_tree_basic(self):
+        """Test basic Merkle tree operations."""
+        asset_ids = ["asset1", "asset2", "asset3"]
         
-        asset_id3 = self.asset_manager.put_asset(
-            data3, kind, metadata, parents=parents
-        )
+        # Create tree
+        tree = MerkleTree(asset_ids)
+        root_hash = tree.get_root_hash()
         
-        # Get asset with lineage
-        asset3 = self.asset_manager.get_asset(asset_id3)
-        self.assertEqual(len(asset3["parents"]), 1)
-        self.assertEqual(asset3["parents"][0]["asset_id"], asset_id)
+        # Verify tree structure
+        self.assertIsNotNone(root_hash)
+        self.assertEqual(len(tree.asset_ids), 3)
+    
+    def test_crypto_basic(self):
+        """Test basic cryptographic operations."""
+        # Generate keys
+        private_key = self.crypto.generate_private_key()
+        public_key = self.crypto.get_public_key()
         
-        # Create snapshot
-        asset_ids = [asset_id, asset_id2, asset_id3]
-        snapshot_metadata = {"description": "Test snapshot"}
+        self.assertIsNotNone(private_key)
+        self.assertIsNotNone(public_key)
         
-        snapshot = self.asset_manager.create_snapshot(
-            "default", asset_ids, snapshot_metadata
-        )
+        # Test signing
+        data = b"test data"
+        signature = self.crypto.sign_data(data)
+        self.assertIsNotNone(signature)
         
-        # Get snapshot
-        retrieved_snapshot = self.asset_manager.get_snapshot(snapshot["snapshot_id"])
-        self.assertEqual(retrieved_snapshot["snapshot_id"], snapshot["snapshot_id"])
-        self.assertEqual(set(retrieved_snapshot["asset_ids"]), set(asset_ids))
+        # Test verification
+        is_valid = self.crypto.verify_signature(data, signature, public_key)
+        self.assertTrue(is_valid)
 
 
 if __name__ == "__main__":

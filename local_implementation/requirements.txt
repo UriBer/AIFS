@@ -1,18 +1,36 @@
 # Core dependencies
-grpcio==1.54.0
-grpcio-tools==1.54.0
-protobuf==4.22.3
-# Replacing blake3 with hashlib (standard library) to avoid Rust dependency
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
+protobuf>=4.25.0
+# Using hashlib (standard library) instead of blake3 to avoid Rust dependency
 # blake3==0.3.3
-numpy==1.24.3
-faiss-cpu==1.7.4
-sqlite-utils==3.35
-pydantic==2.0.3
-typer==0.9.0
-rich==13.4.2
+numpy>=1.26.0
+
+# FAISS alternatives - try these in order:
+# Option 1: Pre-built wheel (most compatible)
+faiss-cpu>=1.7.4; platform_machine == "x86_64"
+# Option 2: Conda-based (if pip fails)
+# faiss-cpu>=1.7.4; platform_machine == "x86_64"
+# Option 3: Pure Python alternative (fallback)
+scikit-learn>=1.3.0  # For basic vector operations when FAISS unavailable
+
+sqlite-utils>=3.35
+pydantic>=2.5.0  # Python 3.13 compatible version
+typer>=0.9.0
+rich>=13.4.2
+
+# Security and encryption dependencies
+cryptography>=45.0.0  # For AES-256-GCM and Ed25519
+pynacl>=1.5.0  # For Ed25519 signatures
+# macaroon>=0.1.0  # Temporarily disabled - Python 3.13 compatibility issue
+
+# Compression support
+zstandard>=0.22.0  # For zstd compression as required by spec
 
 # Test dependencies
 pytest
+pytest-grpc  # For testing gRPC services
+pytest-mock  # For mocking in tests
 
 # Optional dependencies
-fusepy==3.0.1  # For FUSE implementation
+fusepy>=3.0.1  # For FUSE implementation

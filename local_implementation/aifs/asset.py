@@ -1,6 +1,7 @@
 """AIFS Asset Management
 
-Implements core asset management functionality.
+Implements core asset management functionality with proper Merkle trees and signatures.
+Note: Using SHA-256 instead of BLAKE3 to avoid Rust dependency.
 """
 
 import os
@@ -11,20 +12,25 @@ import numpy as np
 from .storage import StorageBackend
 from .vector_db import VectorDB
 from .metadata import MetadataStore
+from .merkle import MerkleTree
+from .crypto import CryptoManager
 
 
 class AssetManager:
     """Asset manager for AIFS.
     
-    Integrates storage, vector database, and metadata components.
+    Integrates storage, vector database, metadata components, and cryptographic operations.
+    Note: Using SHA-256 instead of BLAKE3 to avoid Rust dependency.
     """
     
-    def __init__(self, root_dir: Union[str, pathlib.Path], embedding_dim: int = 128):
+    def __init__(self, root_dir: Union[str, pathlib.Path], embedding_dim: int = 128,
+                 private_key: Optional[bytes] = None):
         """Initialize asset manager.
         
         Args:
             root_dir: Root directory for storage
             embedding_dim: Dimension of embedding vectors (default: 128 for testing)
+            private_key: Optional Ed25519 private key for signing snapshots
         """
         self.root_dir = pathlib.Path(root_dir)
         self.root_dir.mkdir(parents=True, exist_ok=True)
@@ -33,6 +39,7 @@ class AssetManager:
         self.storage = StorageBackend(self.root_dir / "storage")
         self.vector_db = VectorDB(str(self.root_dir / "vectors"), dimension=embedding_dim)
         self.metadata_db = MetadataStore(str(self.root_dir / "metadata.db"))
+        self.crypto_manager = CryptoManager(private_key)
     
     def put_asset(self, data: bytes, kind: str = "blob", 
                  embedding: Optional[np.ndarray] = None,
@@ -49,7 +56,7 @@ class AssetManager:
                      [{"asset_id": str, "transform_name": str, "transform_digest": str}]
             
         Returns:
-            Asset ID (BLAKE3 hash)
+            Asset ID (SHA-256 hash)
         """
         # Store data and get content hash
         asset_id = self.storage.put(data)
@@ -81,7 +88,7 @@ class AssetManager:
         """Retrieve an asset.
         
         Args:
-            asset_id: Asset ID (BLAKE3 hash)
+            asset_id: Asset ID (SHA-256 hash)
             
         Returns:
             Asset dictionary or None if not found
@@ -141,7 +148,7 @@ class AssetManager:
     
     def create_snapshot(self, namespace: str, asset_ids: List[str], 
                        metadata: Optional[Dict] = None) -> str:
-        """Create a snapshot of assets.
+        """Create a snapshot of assets with proper Merkle tree and Ed25519 signature.
         
         Args:
             namespace: Namespace for the snapshot
@@ -151,18 +158,24 @@ class AssetManager:
         Returns:
             Snapshot ID
         """
-        import hashlib
+        from datetime import datetime
         
-        # Sort asset IDs for deterministic merkle root
-        sorted_ids = sorted(asset_ids)
+        # Create Merkle tree from asset IDs
+        merkle_tree = MerkleTree(asset_ids)
+        merkle_root = merkle_tree.get_root_hash()
         
-        # Compute merkle root (simplified for this implementation)
-        # In a full implementation, you'd build a proper merkle tree
-        merkle_input = ":".join(sorted_ids).encode()
-        merkle_root = hashlib.sha256(merkle_input).hexdigest()
+        # Get current timestamp
+        timestamp = datetime.utcnow().isoformat()
         
-        # Create snapshot
-        snapshot_id = self.metadata_db.create_snapshot(namespace, merkle_root, metadata)
+        # Sign the snapshot with Ed25519
+        signature_bytes, signature_hex = self.crypto_manager.sign_snapshot(
+            merkle_root, timestamp, namespace
+        )
+        
+        # Create snapshot with signature
+        snapshot_id = self.metadata_db.create_snapshot(
+            namespace, merkle_root, metadata, signature_hex, timestamp
+        )
         
         # Add assets to snapshot
         for asset_id in asset_ids:
@@ -171,7 +184,7 @@ class AssetManager:
         return snapshot_id
     
     def get_snapshot(self, snapshot_id: str) -> Optional[Dict]:
-        """Get snapshot.
+        """Get snapshot with verification information.
         
         Args:
             snapshot_id: Snapshot ID
@@ -179,4 +192,60 @@ class AssetManager:
         Returns:
             Snapshot dictionary or None if not found
         """
-        return self.metadata_db.get_snapshot(snapshot_id)
+        snapshot = self.metadata_db.get_snapshot(snapshot_id)
+        if not snapshot:
+            return None
+        
+        # Add Merkle tree information
+        asset_ids = [asset["asset_id"] for asset in snapshot["assets"]]
+        merkle_tree = MerkleTree(asset_ids)
+        
+        snapshot["merkle_tree"] = merkle_tree.get_tree_structure()
+        snapshot["merkle_proofs"] = {}
+        
+        # Generate proofs for each asset
+        for asset_id in asset_ids:
+            proof = merkle_tree.get_proof(asset_id)
+            if proof:
+                snapshot["merkle_proofs"][asset_id] = proof
+        
+        return snapshot
+    
+    def verify_snapshot(self, snapshot_id: str, public_key: bytes) -> bool:
+        """Verify a snapshot's Ed25519 signature.
+        
+        Args:
+            snapshot_id: Snapshot ID
+            public_key: Public key for verification
+            
+        Returns:
+            True if signature is valid, False otherwise
+        """
+        snapshot = self.metadata_db.get_snapshot(snapshot_id)
+        if not snapshot:
+            return False
+        
+        # Verify signature
+        return self.crypto_manager.verify_snapshot_signature(
+            bytes.fromhex(snapshot["signature"]),
+            snapshot["merkle_root"],
+            snapshot["created_at"],
+            snapshot["namespace"],
+            public_key
+        )
+    
+    def get_public_key(self) -> bytes:
+        """Get the public key for snapshot verification.
+        
+        Returns:
+            Public key bytes
+        """
+        return self.crypto_manager.get_public_key()
+    
+    def get_public_key_hex(self) -> str:
+        """Get the public key as hex string.
+        
+        Returns:
+            Public key as hex string
+        """
+        return self.crypto_manager.get_public_key_hex()
