@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package aifs.v1;
+
+// Asset kinds
+enum AssetKind {
+  BLOB = 0;
+  TENSOR = 1;
+  EMBED = 2;
+  ARTIFACT = 3;
+}
+
+// Asset metadata
+message AssetMetadata {
+  string asset_id = 1;
+  AssetKind kind = 2;
+  int64 size = 3;
+  string created_at = 4;
+  map<string, string> metadata = 5;
+}
+
+// Parent edge for lineage tracking
+message ParentEdge {
+  string parent_asset_id = 1;
+  string transform_name = 2;
+  string transform_digest = 3;
+}
+
+// Asset chunk for streaming
+message Chunk {
+  bytes data = 1;
+}
+
+// Put asset request
+message PutAssetRequest {
+  AssetKind kind = 1;
+  map<string, string> metadata = 2;
+  repeated ParentEdge parents = 3;
+  bytes embedding = 4;  // Optional embedding vector
+  repeated Chunk chunks = 5;  // Streamed chunks
+}
+
+// Put asset response
+message PutAssetResponse {
+  string asset_id = 1;
+}
+
+// Get asset request
+message GetAssetRequest {
+  string asset_id = 1;
+  bool include_data = 2;  // Whether to include the actual data
+}
+
+// Get asset response
+message GetAssetResponse {
+  AssetMetadata metadata = 1;
+  repeated ParentEdge parents = 2;
+  repeated string children = 3;  // Child asset IDs
+  bytes data = 4;  // Only included if include_data is true
+}
+
+// Vector search request
+message VectorSearchRequest {
+  bytes query_embedding = 1;
+  int32 k = 2;  // Number of results to return
+  map<string, string> filter = 3;  // Optional metadata filters
+}
+
+// Vector search result
+message SearchResult {
+  string asset_id = 1;
+  float score = 2;
+  AssetMetadata metadata = 3;
+}
+
+// Vector search response
+message VectorSearchResponse {
+  repeated SearchResult results = 1;
+}
+
+// Create snapshot request
+message CreateSnapshotRequest {
+  string namespace = 1;
+  repeated string asset_ids = 2;
+  map<string, string> metadata = 3;
+}
+
+// Create snapshot response
+message CreateSnapshotResponse {
+  string snapshot_id = 1;
+  string merkle_root = 2;
+}
+
+// Get snapshot request
+message GetSnapshotRequest {
+  string snapshot_id = 1;
+}
+
+// Get snapshot response
+message GetSnapshotResponse {
+  string snapshot_id = 1;
+  string namespace = 2;
+  string merkle_root = 3;
+  string created_at = 4;
+  map<string, string> metadata = 5;
+  repeated string asset_ids = 6;
+}
+
+// AIFS service
+service AIFS {
+  // Store an asset
+  rpc PutAsset(stream PutAssetRequest) returns (PutAssetResponse);
+  
+  // Retrieve an asset
+  rpc GetAsset(GetAssetRequest) returns (GetAssetResponse);
+  
+  // Search for similar assets
+  rpc VectorSearch(VectorSearchRequest) returns (VectorSearchResponse);
+  
+  // Create a snapshot
+  rpc CreateSnapshot(CreateSnapshotRequest) returns (CreateSnapshotResponse);
+  
+  // Get a snapshot
+  rpc GetSnapshot(GetSnapshotRequest) returns (GetSnapshotResponse);
+}
+
+// Health service
+service Health {
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {}
+message HealthCheckResponse {
+  bool healthy = 1;
+  string status = 2;
+}
+
+// Introspect service
+service Introspect {
+  rpc GetInfo(IntrospectRequest) returns (IntrospectResponse);
+}
+
+message IntrospectRequest {}
+message IntrospectResponse {
+  string version = 1;
+  string config = 2;
+  repeated string features = 3;
+}
+
+// Admin service
+service Admin {
+  rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse);
+  rpc PruneSnapshot(PruneSnapshotRequest) returns (PruneSnapshotResponse);
+  rpc ManagePolicy(ManagePolicyRequest) returns (ManagePolicyResponse);
+}
+
+message CreateNamespaceRequest {
+  string name = 1;
+}
+message CreateNamespaceResponse {
+  bool success = 1;
+  string namespace_id = 2;
+}
+message PruneSnapshotRequest {
+  string snapshot_id = 1;
+}
+message PruneSnapshotResponse {
+  bool success = 1;
+}
+message ManagePolicyRequest {
+  string namespace_id = 1;
+  string policy = 2;
+}
+message ManagePolicyResponse {
+  bool success = 1;
+}
+
+// Metrics service
+service Metrics {
+  rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
+}
+
+message MetricsRequest {}
+message MetricsResponse {
+  string prometheus_metrics = 1;
+  string opentelemetry_metrics = 2;
+}
+
+// Format service
+service Format {
+  rpc FormatStorage(FormatRequest) returns (FormatResponse);
+}
+
+message FormatRequest {
+  bool dry_run = 1;
+}
+message FormatResponse {
+  bool success = 1;
+  string root_snapshot_id = 2;
+  string log = 3;
+}

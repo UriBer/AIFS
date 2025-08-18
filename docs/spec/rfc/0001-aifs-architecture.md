@@ -192,6 +192,28 @@ bytes transform_digest = 3; // e.g., container image hash
    populate the `google.rpc.Status` message with a machine-readable `reason`
    and human-readable `detail`.
 
+   ### 5.4.  Formatting and Migration
+
+AIFS implementations **MUST** provide a `Format` RPC to initialize or reformat a storage backend for AIFS use. Formatting **MUST**:
+
+- Initialize the metadata store, vector index, and root namespace.
+- Optionally migrate legacy data, reporting progress and errors.
+- Log all formatting operations for audit and recovery.
+- Return a canonical root snapshot ID on success.
+
+Formatting **SHOULD** be idempotent and support dry-run mode for validation.
+
+### 5.5.  Built-in Services
+
+AIFS servers **MUST** implement the following built-in services:
+
+- `Health`: Liveness/readiness probe for orchestration and monitoring.
+- `Introspect`: Returns server version, configuration, and supported features.
+- `Admin`: RPCs for namespace creation, snapshot pruning, and policy management.
+- `Metrics`: Export operational metrics via OpenTelemetry or Prometheus.
+
+These services **SHOULD** be accessible via standard gRPC endpoints and documented in the `.proto` definitions.
+
 ----------------------------------------------------------------------
 
 6.  Snapshot & Versioning Model

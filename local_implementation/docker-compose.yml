@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  aifs-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "50051:50051"
+    volumes:
+      - aifs-data:/data/aifs
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python start_server.py --host 0.0.0.0 --storage-dir /data/aifs
+
+volumes:
+  aifs-data:
+    driver: local
