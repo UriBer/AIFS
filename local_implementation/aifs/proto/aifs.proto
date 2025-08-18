@@ -123,3 +123,79 @@ service AIFS {
   // Get a snapshot
   rpc GetSnapshot(GetSnapshotRequest) returns (GetSnapshotResponse);
 }
+
+// Health service
+service Health {
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {}
+message HealthCheckResponse {
+  bool healthy = 1;
+  string status = 2;
+}
+
+// Introspect service
+service Introspect {
+  rpc GetInfo(IntrospectRequest) returns (IntrospectResponse);
+}
+
+message IntrospectRequest {}
+message IntrospectResponse {
+  string version = 1;
+  string config = 2;
+  repeated string features = 3;
+}
+
+// Admin service
+service Admin {
+  rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse);
+  rpc PruneSnapshot(PruneSnapshotRequest) returns (PruneSnapshotResponse);
+  rpc ManagePolicy(ManagePolicyRequest) returns (ManagePolicyResponse);
+}
+
+message CreateNamespaceRequest {
+  string name = 1;
+}
+message CreateNamespaceResponse {
+  bool success = 1;
+  string namespace_id = 2;
+}
+message PruneSnapshotRequest {
+  string snapshot_id = 1;
+}
+message PruneSnapshotResponse {
+  bool success = 1;
+}
+message ManagePolicyRequest {
+  string namespace_id = 1;
+  string policy = 2;
+}
+message ManagePolicyResponse {
+  bool success = 1;
+}
+
+// Metrics service
+service Metrics {
+  rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
+}
+
+message MetricsRequest {}
+message MetricsResponse {
+  string prometheus_metrics = 1;
+  string opentelemetry_metrics = 2;
+}
+
+// Format service
+service Format {
+  rpc FormatStorage(FormatRequest) returns (FormatResponse);
+}
+
+message FormatRequest {
+  bool dry_run = 1;
+}
+message FormatResponse {
+  bool success = 1;
+  string root_snapshot_id = 2;
+  string log = 3;
+}

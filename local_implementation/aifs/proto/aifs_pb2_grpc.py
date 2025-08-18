@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from aifs.proto import aifs_pb2 as aifs_dot_proto_dot_aifs__pb2
+import aifs_pb2 as aifs__pb2
 
 GRPC_GENERATED_VERSION = '1.74.0'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in aifs/proto/aifs_pb2_grpc.py depends on'
+        + f' but the generated code in aifs_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -37,28 +37,28 @@ class AIFSStub(object):
         """
         self.PutAsset = channel.stream_unary(
                 '/aifs.v1.AIFS/PutAsset',
-                request_serializer=aifs_dot_proto_dot_aifs__pb2.PutAssetRequest.SerializeToString,
-                response_deserializer=aifs_dot_proto_dot_aifs__pb2.PutAssetResponse.FromString,
+                request_serializer=aifs__pb2.PutAssetRequest.SerializeToString,
+                response_deserializer=aifs__pb2.PutAssetResponse.FromString,
                 _registered_method=True)
         self.GetAsset = channel.unary_unary(
                 '/aifs.v1.AIFS/GetAsset',
-                request_serializer=aifs_dot_proto_dot_aifs__pb2.GetAssetRequest.SerializeToString,
-                response_deserializer=aifs_dot_proto_dot_aifs__pb2.GetAssetResponse.FromString,
+                request_serializer=aifs__pb2.GetAssetRequest.SerializeToString,
+                response_deserializer=aifs__pb2.GetAssetResponse.FromString,
                 _registered_method=True)
         self.VectorSearch = channel.unary_unary(
                 '/aifs.v1.AIFS/VectorSearch',
-                request_serializer=aifs_dot_proto_dot_aifs__pb2.VectorSearchRequest.SerializeToString,
-                response_deserializer=aifs_dot_proto_dot_aifs__pb2.VectorSearchResponse.FromString,
+                request_serializer=aifs__pb2.VectorSearchRequest.SerializeToString,
+                response_deserializer=aifs__pb2.VectorSearchResponse.FromString,
                 _registered_method=True)
         self.CreateSnapshot = channel.unary_unary(
                 '/aifs.v1.AIFS/CreateSnapshot',
-                request_serializer=aifs_dot_proto_dot_aifs__pb2.CreateSnapshotRequest.SerializeToString,
-                response_deserializer=aifs_dot_proto_dot_aifs__pb2.CreateSnapshotResponse.FromString,
+                request_serializer=aifs__pb2.CreateSnapshotRequest.SerializeToString,
+                response_deserializer=aifs__pb2.CreateSnapshotResponse.FromString,
                 _registered_method=True)
         self.GetSnapshot = channel.unary_unary(
                 '/aifs.v1.AIFS/GetSnapshot',
-                request_serializer=aifs_dot_proto_dot_aifs__pb2.GetSnapshotRequest.SerializeToString,
-                response_deserializer=aifs_dot_proto_dot_aifs__pb2.GetSnapshotResponse.FromString,
+                request_serializer=aifs__pb2.GetSnapshotRequest.SerializeToString,
+                response_deserializer=aifs__pb2.GetSnapshotResponse.FromString,
                 _registered_method=True)
 
 
@@ -106,28 +106,28 @@ def add_AIFSServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'PutAsset': grpc.stream_unary_rpc_method_handler(
                     servicer.PutAsset,
-                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.PutAssetRequest.FromString,
-                    response_serializer=aifs_dot_proto_dot_aifs__pb2.PutAssetResponse.SerializeToString,
+                    request_deserializer=aifs__pb2.PutAssetRequest.FromString,
+                    response_serializer=aifs__pb2.PutAssetResponse.SerializeToString,
             ),
             'GetAsset': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAsset,
-                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.GetAssetRequest.FromString,
-                    response_serializer=aifs_dot_proto_dot_aifs__pb2.GetAssetResponse.SerializeToString,
+                    request_deserializer=aifs__pb2.GetAssetRequest.FromString,
+                    response_serializer=aifs__pb2.GetAssetResponse.SerializeToString,
             ),
             'VectorSearch': grpc.unary_unary_rpc_method_handler(
                     servicer.VectorSearch,
-                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.VectorSearchRequest.FromString,
-                    response_serializer=aifs_dot_proto_dot_aifs__pb2.VectorSearchResponse.SerializeToString,
+                    request_deserializer=aifs__pb2.VectorSearchRequest.FromString,
+                    response_serializer=aifs__pb2.VectorSearchResponse.SerializeToString,
             ),
             'CreateSnapshot': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateSnapshot,
-                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.CreateSnapshotRequest.FromString,
-                    response_serializer=aifs_dot_proto_dot_aifs__pb2.CreateSnapshotResponse.SerializeToString,
+                    request_deserializer=aifs__pb2.CreateSnapshotRequest.FromString,
+                    response_serializer=aifs__pb2.CreateSnapshotResponse.SerializeToString,
             ),
             'GetSnapshot': grpc.unary_unary_rpc_method_handler(
                     servicer.GetSnapshot,
-                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.GetSnapshotRequest.FromString,
-                    response_serializer=aifs_dot_proto_dot_aifs__pb2.GetSnapshotResponse.SerializeToString,
+                    request_deserializer=aifs__pb2.GetSnapshotRequest.FromString,
+                    response_serializer=aifs__pb2.GetSnapshotResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -156,8 +156,8 @@ class AIFS(object):
             request_iterator,
             target,
             '/aifs.v1.AIFS/PutAsset',
-            aifs_dot_proto_dot_aifs__pb2.PutAssetRequest.SerializeToString,
-            aifs_dot_proto_dot_aifs__pb2.PutAssetResponse.FromString,
+            aifs__pb2.PutAssetRequest.SerializeToString,
+            aifs__pb2.PutAssetResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -183,8 +183,8 @@ class AIFS(object):
             request,
             target,
             '/aifs.v1.AIFS/GetAsset',
-            aifs_dot_proto_dot_aifs__pb2.GetAssetRequest.SerializeToString,
-            aifs_dot_proto_dot_aifs__pb2.GetAssetResponse.FromString,
+            aifs__pb2.GetAssetRequest.SerializeToString,
+            aifs__pb2.GetAssetResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -210,8 +210,8 @@ class AIFS(object):
             request,
             target,
             '/aifs.v1.AIFS/VectorSearch',
-            aifs_dot_proto_dot_aifs__pb2.VectorSearchRequest.SerializeToString,
-            aifs_dot_proto_dot_aifs__pb2.VectorSearchResponse.FromString,
+            aifs__pb2.VectorSearchRequest.SerializeToString,
+            aifs__pb2.VectorSearchResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -237,8 +237,8 @@ class AIFS(object):
             request,
             target,
             '/aifs.v1.AIFS/CreateSnapshot',
-            aifs_dot_proto_dot_aifs__pb2.CreateSnapshotRequest.SerializeToString,
-            aifs_dot_proto_dot_aifs__pb2.CreateSnapshotResponse.FromString,
+            aifs__pb2.CreateSnapshotRequest.SerializeToString,
+            aifs__pb2.CreateSnapshotResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -264,8 +264,469 @@ class AIFS(object):
             request,
             target,
             '/aifs.v1.AIFS/GetSnapshot',
-            aifs_dot_proto_dot_aifs__pb2.GetSnapshotRequest.SerializeToString,
-            aifs_dot_proto_dot_aifs__pb2.GetSnapshotResponse.FromString,
+            aifs__pb2.GetSnapshotRequest.SerializeToString,
+            aifs__pb2.GetSnapshotResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class HealthStub(object):
+    """Health service
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.Check = channel.unary_unary(
+                '/aifs.v1.Health/Check',
+                request_serializer=aifs__pb2.HealthCheckRequest.SerializeToString,
+                response_deserializer=aifs__pb2.HealthCheckResponse.FromString,
+                _registered_method=True)
+
+
+class HealthServicer(object):
+    """Health service
+    """
+
+    def Check(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_HealthServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'Check': grpc.unary_unary_rpc_method_handler(
+                    servicer.Check,
+                    request_deserializer=aifs__pb2.HealthCheckRequest.FromString,
+                    response_serializer=aifs__pb2.HealthCheckResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'aifs.v1.Health', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('aifs.v1.Health', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Health(object):
+    """Health service
+    """
+
+    @staticmethod
+    def Check(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.Health/Check',
+            aifs__pb2.HealthCheckRequest.SerializeToString,
+            aifs__pb2.HealthCheckResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class IntrospectStub(object):
+    """Introspect service
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.GetInfo = channel.unary_unary(
+                '/aifs.v1.Introspect/GetInfo',
+                request_serializer=aifs__pb2.IntrospectRequest.SerializeToString,
+                response_deserializer=aifs__pb2.IntrospectResponse.FromString,
+                _registered_method=True)
+
+
+class IntrospectServicer(object):
+    """Introspect service
+    """
+
+    def GetInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_IntrospectServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'GetInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetInfo,
+                    request_deserializer=aifs__pb2.IntrospectRequest.FromString,
+                    response_serializer=aifs__pb2.IntrospectResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'aifs.v1.Introspect', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('aifs.v1.Introspect', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Introspect(object):
+    """Introspect service
+    """
+
+    @staticmethod
+    def GetInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.Introspect/GetInfo',
+            aifs__pb2.IntrospectRequest.SerializeToString,
+            aifs__pb2.IntrospectResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class AdminStub(object):
+    """Admin service
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.CreateNamespace = channel.unary_unary(
+                '/aifs.v1.Admin/CreateNamespace',
+                request_serializer=aifs__pb2.CreateNamespaceRequest.SerializeToString,
+                response_deserializer=aifs__pb2.CreateNamespaceResponse.FromString,
+                _registered_method=True)
+        self.PruneSnapshot = channel.unary_unary(
+                '/aifs.v1.Admin/PruneSnapshot',
+                request_serializer=aifs__pb2.PruneSnapshotRequest.SerializeToString,
+                response_deserializer=aifs__pb2.PruneSnapshotResponse.FromString,
+                _registered_method=True)
+        self.ManagePolicy = channel.unary_unary(
+                '/aifs.v1.Admin/ManagePolicy',
+                request_serializer=aifs__pb2.ManagePolicyRequest.SerializeToString,
+                response_deserializer=aifs__pb2.ManagePolicyResponse.FromString,
+                _registered_method=True)
+
+
+class AdminServicer(object):
+    """Admin service
+    """
+
+    def CreateNamespace(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def PruneSnapshot(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ManagePolicy(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_AdminServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'CreateNamespace': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateNamespace,
+                    request_deserializer=aifs__pb2.CreateNamespaceRequest.FromString,
+                    response_serializer=aifs__pb2.CreateNamespaceResponse.SerializeToString,
+            ),
+            'PruneSnapshot': grpc.unary_unary_rpc_method_handler(
+                    servicer.PruneSnapshot,
+                    request_deserializer=aifs__pb2.PruneSnapshotRequest.FromString,
+                    response_serializer=aifs__pb2.PruneSnapshotResponse.SerializeToString,
+            ),
+            'ManagePolicy': grpc.unary_unary_rpc_method_handler(
+                    servicer.ManagePolicy,
+                    request_deserializer=aifs__pb2.ManagePolicyRequest.FromString,
+                    response_serializer=aifs__pb2.ManagePolicyResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'aifs.v1.Admin', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('aifs.v1.Admin', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Admin(object):
+    """Admin service
+    """
+
+    @staticmethod
+    def CreateNamespace(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.Admin/CreateNamespace',
+            aifs__pb2.CreateNamespaceRequest.SerializeToString,
+            aifs__pb2.CreateNamespaceResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PruneSnapshot(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.Admin/PruneSnapshot',
+            aifs__pb2.PruneSnapshotRequest.SerializeToString,
+            aifs__pb2.PruneSnapshotResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ManagePolicy(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.Admin/ManagePolicy',
+            aifs__pb2.ManagePolicyRequest.SerializeToString,
+            aifs__pb2.ManagePolicyResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class MetricsStub(object):
+    """Metrics service
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.GetMetrics = channel.unary_unary(
+                '/aifs.v1.Metrics/GetMetrics',
+                request_serializer=aifs__pb2.MetricsRequest.SerializeToString,
+                response_deserializer=aifs__pb2.MetricsResponse.FromString,
+                _registered_method=True)
+
+
+class MetricsServicer(object):
+    """Metrics service
+    """
+
+    def GetMetrics(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_MetricsServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'GetMetrics': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetMetrics,
+                    request_deserializer=aifs__pb2.MetricsRequest.FromString,
+                    response_serializer=aifs__pb2.MetricsResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'aifs.v1.Metrics', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('aifs.v1.Metrics', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Metrics(object):
+    """Metrics service
+    """
+
+    @staticmethod
+    def GetMetrics(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.Metrics/GetMetrics',
+            aifs__pb2.MetricsRequest.SerializeToString,
+            aifs__pb2.MetricsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class FormatStub(object):
+    """Format service
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.FormatStorage = channel.unary_unary(
+                '/aifs.v1.Format/FormatStorage',
+                request_serializer=aifs__pb2.FormatRequest.SerializeToString,
+                response_deserializer=aifs__pb2.FormatResponse.FromString,
+                _registered_method=True)
+
+
+class FormatServicer(object):
+    """Format service
+    """
+
+    def FormatStorage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_FormatServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'FormatStorage': grpc.unary_unary_rpc_method_handler(
+                    servicer.FormatStorage,
+                    request_deserializer=aifs__pb2.FormatRequest.FromString,
+                    response_serializer=aifs__pb2.FormatResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'aifs.v1.Format', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('aifs.v1.Format', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Format(object):
+    """Format service
+    """
+
+    @staticmethod
+    def FormatStorage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.Format/FormatStorage',
+            aifs__pb2.FormatRequest.SerializeToString,
+            aifs__pb2.FormatResponse.FromString,
             options,
             channel_credentials,
             insecure,

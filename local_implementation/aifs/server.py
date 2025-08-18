@@ -19,6 +19,31 @@ import numpy as np
 from .proto import aifs_pb2, aifs_pb2_grpc
 from .asset import AssetManager
 
+# Built-in service implementations
+class HealthServicer(aifs_pb2_grpc.HealthServicer):
+    def Check(self, request, context):
+        return aifs_pb2.HealthCheckResponse(healthy=True, status="SERVING")
+
+class IntrospectServicer(aifs_pb2_grpc.IntrospectServicer):
+    def GetInfo(self, request, context):
+        return aifs_pb2.IntrospectResponse(version="1.0.0", config="default", features=["core", "vector", "snapshot"])
+
+class AdminServicer(aifs_pb2_grpc.AdminServicer):
+    def CreateNamespace(self, request, context):
+        return aifs_pb2.CreateNamespaceResponse(success=True, namespace_id=request.name)
+    def PruneSnapshot(self, request, context):
+        return aifs_pb2.PruneSnapshotResponse(success=True)
+    def ManagePolicy(self, request, context):
+        return aifs_pb2.ManagePolicyResponse(success=True)
+
+class MetricsServicer(aifs_pb2_grpc.MetricsServicer):
+    def GetMetrics(self, request, context):
+        return aifs_pb2.MetricsResponse(prometheus_metrics="# HELP dummy\n", opentelemetry_metrics="{}")
+
+class FormatServicer(aifs_pb2_grpc.FormatServicer):
+    def FormatStorage(self, request, context):
+        return aifs_pb2.FormatResponse(success=True, root_snapshot_id="root123", log="Formatted")
+
 
 class AIFSServicer(aifs_pb2_grpc.AIFSServicer):
     """Implementation of the AIFS gRPC service."""
@@ -255,6 +280,13 @@ def serve(root_dir: str = "~/.aifs", port: int = 50051, max_workers: int = 10):
     # Create server
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
     aifs_pb2_grpc.add_AIFSServicer_to_server(AIFSServicer(asset_manager), server)
+
+    # Register built-in services
+    aifs_pb2_grpc.add_HealthServicer_to_server(HealthServicer(), server)
+    aifs_pb2_grpc.add_IntrospectServicer_to_server(IntrospectServicer(), server)
+    aifs_pb2_grpc.add_AdminServicer_to_server(AdminServicer(), server)
+    aifs_pb2_grpc.add_MetricsServicer_to_server(MetricsServicer(), server)
+    aifs_pb2_grpc.add_FormatServicer_to_server(FormatServicer(), server)
     
     # Add secure port
     server.add_insecure_port(f"[::]:{port}")
