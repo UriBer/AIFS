@@ -7,3 +7,4 @@ __pycache__/*
 /proto/*
 local_implementation/aifs.egg-info/*
 .vscode/*
+=*

@@ -64,6 +64,8 @@
 - **Storage Persistence**: Fixed encryption/decryption consistency across instances
 - **Column Schema Mismatches**: Corrected database table structures and column ordering
 - **Attribute Errors**: Added missing methods and corrected API signatures
+- **CLI Compatibility**: Fixed typer version compatibility issues for Python 3.13
+- **Protobuf Imports**: Corrected import statements in generated gRPC files
 
 ### 📚 Documentation
 - **Implementation Guide**: Comprehensive README with installation and usage
