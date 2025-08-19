@@ -15,7 +15,7 @@ faiss-cpu>=1.7.4; platform_machine == "x86_64"
 scikit-learn>=1.0.0  # For basic vector operations when FAISS unavailable
 
 sqlite-utils==3.35
-pydantic==2.0.3
+pydantic==2.4.0
 typer==0.9.0
 rich==13.4.2
 
