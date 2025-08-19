@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     ipr="trust200902"
+     category="info"
+     docName="draft-berman-aifs-architecture-00"
+     submissionType="IETF"
+     consensus="false"
+     version="3">
+  <front>
+    <title abbrev="AIFS">AI-Native File System (AIFS) Architecture</title>
+
+    <author initials="U." surname="Berman" fullname="Uri Berman">
+      <organization>Even-Derech-IT</organization>
+      <address>
+        <email>uri@example.com</email>
+      </address>
+    </author>
+
+    <date day="19" month="August" year="2025"/>
+    <area>Applications</area>
+    <workgroup>Independent Submission</workgroup>
+    <keyword>AIFS</keyword>
+    <keyword>vector search</keyword>
+    <keyword>content addressing</keyword>
+
+    <abstract>
+      <t>
+        The AI-Native File System (AIFS) is a semantic, content-addressed,
+        versioned storage fabric that treats meaning — not directory paths —
+        as the primary lookup key. It integrates vector search, lineage
+        tracking, and snapshot semantics required by modern machine-learning
+        pipelines while retaining optional POSIX compatibility for legacy
+        applications. This document specifies the AIFS object model, wire
+        protocol, snapshot format, security properties, and performance
+        targets.
+      </t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section anchor="intro" numbered="true">
+      <name>Introduction</name>
+      <t>
+        General-purpose file systems such as NTFS, ext4, APFS, and ZFS expose
+        hierarchical namespaces optimized around human-assigned file names and
+        fixed-size block I/O. Contemporary machine-learning systems organize
+        and retrieve information by semantic similarity (vector distance),
+        demand immutable snapshots for reproducible training, and operate at
+        data volumes that exceed the scalability envelope of bolt-on index
+        layers. AIFS addresses these needs.
+      </t>
+    </section>
+
+    <section anchor="conventions" numbered="true">
+      <name>Conventions and Terminology</name>
+      <t>
+        The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”,
+        “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “NOT RECOMMENDED”, “MAY”, and
+        “OPTIONAL” in this document are to be interpreted as described in BCP 14
+        <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only when,
+        they appear in all capitals, as shown here.
+      </t>
+      <dl newline="true">
+        <dt>Asset</dt>
+        <dd>A logical unit of data (blob, tensor, embedding, model, document).</dd>
+        <dt>Chunk</dt>
+        <dd>A physically stored fragment of an Asset.</dd>
+        <dt>Embedding</dt>
+        <dd>A fixed-length vector representation of an Asset or Chunk.</dd>
+        <dt>Snapshot</dt>
+        <dd>A Merkle-root describing the state of a namespace at a specific time.</dd>
+        <dt>Namespace</dt>
+        <dd>A logical grouping of Assets that share an access and retention policy.</dd>
+      </dl>
+    </section>
+
+    <section anchor="arch" numbered="true">
+      <name>Architectural Overview</name>
+      <t>The AIFS stack is shown below.</t>
+      <artwork name="AIFS Layers"><![CDATA[
++---------------------------+
+|  Application / ML SDKs    |
++---------------------------+
+|    AIFS gRPC API          |
++---------------------------+
+|  Metadata & Vector Index  |
+|  (RocksDB/FDB + HNSW/PQ)  |
++---------------------------+
+|  Object/Chunk Storage     |
+|  (NVMe-oF, HDD, S3, etc.) |
++---------------------------+
+|  Optional POSIX FUSE      |
++---------------------------+
+|  Kernel I/O               |
++---------------------------+
+]]></artwork>
+
+      <t>Data flow patterns:</t>
+      <ul>
+        <li><strong>Write</strong>: Clients send a PutAsset RPC containing user metadata plus a
+        stream of chunks. The server computes the BLAKE3 digest, persists
+        chunks, executes ingest operators (e.g., embedding generation),
+        updates the vector index, and returns the canonical AssetID.</li>
+        <li><strong>Vector Query</strong>: Clients use VectorSearch specifying <tt>k</tt>,
+        distance metric, and optional metadata filters. The server returns a
+        list of AssetReference objects containing AssetIDs and scores.</li>
+      </ul>
+    </section>
+
+    <section anchor="object-model" numbered="true">
+      <name>Object Model</name>
+
+      <section anchor="asset-kinds" numbered="true">
+        <name>Asset Kinds</name>
+        <table anchor="asset-table">
+          <name>Asset Encodings</name>
+          <thead>
+            <tr>
+              <th>Kind</th><th>Encoding</th><th>Schema ID</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Blob</td><td>raw</td><td>—</td><td>Arbitrary byte stream</td>
+            </tr>
+            <tr>
+              <td>Tensor</td><td>Arrow2</td><td>schema/nd-array.proto</td>
+              <td>Supports n-D shapes</td>
+            </tr>
+            <tr>
+              <td>Embed</td><td>FlatBuffers</td><td>schema/embedding.fbs</td>
+              <td>One per modality/model</td>
+            </tr>
+            <tr>
+              <td>Artifact</td><td>ZIP + MANIFEST</td><td>schema/artifact.proto</td>
+              <td>Heterogeneous bundle</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section anchor="ids" numbered="true">
+        <name>Canonical Identifiers</name>
+        <artwork><![CDATA[
+aifs://<blake3-hash>        ; AssetID
+aifs-snap://<blake3-128>    ; SnapshotID
+]]></artwork>
+        <t>
+          The BLAKE3 hash MUST be lowercase hex, 256-bit output for AssetIDs;
+          SnapshotIDs are 128-bit BLAKE3 hashes of the Merkle root plus timestamp.
+        </t>
+      </section>
+
+      <section anchor="lineage" numbered="true">
+        <name>Lineage Graph</name>
+        <artwork name="ParentEdge message"><![CDATA[
+<CODE BEGINS>
+message ParentEdge {
+  bytes parent_asset_id = 1;
+  string transform_name = 2;
+  bytes transform_digest = 3; // e.g., container image hash
+}
+<CODE ENDS>
+]]></artwork>
+        <t>
+          Servers MUST provide strong causality: if Asset B lists Asset A as a
+          parent, B SHALL NOT be visible until A is fully committed.
+        </t>
+      </section>
+    </section>
+
+    <section anchor="wire" numbered="true">
+      <name>Wire Protocol</name>
+      <section anchor="transport" numbered="true">
+        <name>Transport</name>
+        <t>
+          Transport is gRPC over HTTP/2. Serialization is protobuf v3 with
+          deterministic encoding. The client MUST support zstd compression.
+        </t>
+      </section>
+
+      <section anchor="core-rpcs" numbered="true">
+        <name>Core RPCs (non-exhaustive)</name>
+        <table>
+          <thead><tr><th>RPC</th><th>Direction</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>PutAsset(stream Chunk)</td><td>client→server</td><td>Store asset; returns AssetID</td></tr>
+            <tr><td>GetAsset(Request)</td><td>client→server</td><td>Retrieve metadata and chunk list</td></tr>
+            <tr><td>VectorSearch(Query)</td><td>client→server</td><td>k-NN search over embeddings</td></tr>
+            <tr><td>CreateSnapshot(Namespace)</td><td>client→server</td><td>Atomically cut snapshot</td></tr>
+            <tr><td>SubscribeEvents(filter)</td><td>client→server</td><td>Server push for lineage/drift</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section anchor="errors" numbered="true">
+        <name>Error Handling</name>
+        <t>
+          All RPC errors MUST map to gRPC status codes. The server SHOULD
+          populate the google.rpc.Status message with a machine-readable reason
+          and a human-readable detail.
+        </t>
+      </section>
+    </section>
+
+    <section anchor="snapshots" numbered="true">
+      <name>Snapshot and Versioning Model</name>
+      <section>
+        <name>Merkle Tree Structure</name>
+        <artwork><![CDATA[
+SnapshotRoot
+├── AssetID_1  (BLAKE3)
+├── AssetID_2
+└── …
+]]></artwork>
+        <t>
+          The root node MUST be signed with Ed25519 according to
+          <xref target="RFC8032"/>.
+        </t>
+      </section>
+      <section>
+        <name>Branches and Tags</name>
+        <t>
+          Branch updates MUST be atomic. Immutable tags SHOULD be used for
+          audit-grade provenance (e.g., “dataset v1.2 regulatory-export”).
+        </t>
+      </section>
+      <section>
+        <name>POSIX View</name>
+        <t>
+          The optional FUSE driver MUST expose files by BLAKE3 hash and may
+          synthesize directories based on branch names.
+        </t>
+      </section>
+    </section>
+
+    <section anchor="security" numbered="true">
+      <name>Security Considerations</name>
+      <section>
+        <name>Confidentiality</name>
+        <t>
+          Every chunk MUST be encrypted with AES-256-GCM. Per-chunk data keys
+          SHALL be wrapped by a customer-managed KMS using envelope encryption.
+        </t>
+      </section>
+      <section>
+        <name>Integrity and Authenticity</name>
+        <t>
+          Integrity is verified by BLAKE3. Snapshot roots MUST be signed using
+          Ed25519 and verified before exposure.
+        </t>
+      </section>
+      <section>
+        <name>Authorization</name>
+        <t>
+          Capability tokens (macaroons) SHALL encode namespace, allowed methods,
+          and expiry. Servers MUST validate tokens on every RPC.
+        </t>
+      </section>
+      <section>
+        <name>Privacy</name>
+        <t>
+          Differential privacy budgets are out of scope but MAY be enforced by
+          policy engines attached to lineage events.
+        </t>
+      </section>
+    </section>
+
+    <section anchor="performance" numbered="true">
+      <name>Performance Expectations</name>
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Target (per node)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Random IOPS (4 KiB, read)</td><td>≥ 1 M IOPS (P50 &lt; 200 µs)</td></tr>
+          <tr><td>Vector search latency (1 B vectors)</td><td>P99 &lt; 1 ms (cosine, k=10)</td></tr>
+          <tr><td>Snapshot creation (100 k Assets)</td><td>≤ 200 ms</td></tr>
+          <tr><td>Ingest throughput (sequential)</td><td>≥ 5 GB/s per proxy</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section anchor="rationale" numbered="true">
+      <name>Rationale and Alternatives</name>
+      <t>
+        BLAKE3 offers tree-hashing and SIMD acceleration with strong security;
+        gRPC provides ubiquitous tooling and streaming; FlatBuffers fit
+        fixed-layout vectors without varint overhead.
+      </t>
+    </section>
+
+    <section anchor="iana" numbered="true">
+      <name>IANA Considerations</name>
+      <t>
+        This document registers the URI schemes <tt>aifs</tt> and
+        <tt>aifs-snap</tt> in the “URI Schemes” registry following the
+        procedures in <xref target="RFC7595"/>.
+      </t>
+    </section>
+
+    <section anchor="ack" numbered="true">
+      <name>Acknowledgements</name>
+      <t>
+        The authors thank the early adopters and the open-source community for
+        their invaluable feedback.
+      </t>
+    </section>
+  </middle>
+
+  <back>
+    <references>
+      <name>Normative References</name>
+
+      <reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author initials="S." surname="Bradner" fullname="Scott Bradner"/>
+          <date month="March" year="1997"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+
+      <reference anchor="RFC8174" target="https://www.rfc-editor.org/rfc/rfc8174">
+        <front>
+          <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+          <author initials="B." surname="Leiba" fullname="Barry Leiba"/>
+          <date month="May" year="2017"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="8174"/>
+      </reference>
+
+      <reference anchor="RFC8032" target="https://www.rfc-editor.org/rfc/rfc8032">
+        <front>
+          <title>Edwards-Curve Digital Signature Algorithm (EdDSA)</title>
+          <author initials="S." surname="Josefsson" fullname="Simon Josefsson"/>
+          <author initials="I." surname="Liusvaara" fullname="Ilari Liusvaara"/>
+          <date month="January" year="2017"/>
+        </front>
+        <seriesInfo name="RFC" value="8032"/>
+      </reference>
+
+      <reference anchor="RFC7595" target="https://www.rfc-editor.org/rfc/rfc7595">
+        <front>
+          <title>Guidelines and Registration Procedures for URI Schemes</title>
+          <author initials="D." surname="Thaler" fullname="Dave Thaler"/>
+          <date month="June" year="2015"/>
+        </front>
+        <seriesInfo name="BCP" value="115"/>
+        <seriesInfo name="RFC" value="7595"/>
+      </reference>
+    </references>
+
+  </back>
+</rfc>

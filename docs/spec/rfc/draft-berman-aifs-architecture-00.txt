@@ -1,0 +1,448 @@
+
+
+
+
+Independent Submission                                         U. Berman
+Internet-Draft                                            Even-Derech-IT
+Intended status: Informational                            19 August 2025
+Expires: 20 February 2026
+
+
+               AI-Native File System (AIFS) Architecture
+                   draft-berman-aifs-architecture-00
+
+Abstract
+
+   The AI-Native File System (AIFS) is a semantic, content-addressed,
+   versioned storage fabric that treats meaning — not directory paths —
+   as the primary lookup key.  It integrates vector search, lineage
+   tracking, and snapshot semantics required by modern machine-learning
+   pipelines while retaining optional POSIX compatibility for legacy
+   applications.  This document specifies the AIFS object model, wire
+   protocol, snapshot format, security properties, and performance
+   targets.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 20 February 2026.
+
+Copyright Notice
+
+   Copyright (c) 2025 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+
+
+
+
+
+
+
+Berman                  Expires 20 February 2026                [Page 1]
+
+Internet-Draft                    AIFS                       August 2025
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Conventions and Terminology . . . . . . . . . . . . . . . . .   3
+   3.  Architectural Overview  . . . . . . . . . . . . . . . . . . .   3
+   4.  Object Model  . . . . . . . . . . . . . . . . . . . . . . . .   4
+     4.1.  Asset Kinds . . . . . . . . . . . . . . . . . . . . . . .   4
+     4.2.  Canonical Identifiers . . . . . . . . . . . . . . . . . .   4
+     4.3.  Lineage Graph . . . . . . . . . . . . . . . . . . . . . .   4
+   5.  Wire Protocol . . . . . . . . . . . . . . . . . . . . . . . .   5
+     5.1.  Transport . . . . . . . . . . . . . . . . . . . . . . . .   5
+     5.2.  Core RPCs (non-exhaustive)  . . . . . . . . . . . . . . .   5
+     5.3.  Error Handling  . . . . . . . . . . . . . . . . . . . . .   5
+   6.  Snapshot and Versioning Model . . . . . . . . . . . . . . . .   6
+     6.1.  Merkle Tree Structure . . . . . . . . . . . . . . . . . .   6
+     6.2.  Branches and Tags . . . . . . . . . . . . . . . . . . . .   6
+     6.3.  POSIX View  . . . . . . . . . . . . . . . . . . . . . . .   6
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
+     7.1.  Confidentiality . . . . . . . . . . . . . . . . . . . . .   6
+     7.2.  Integrity and Authenticity  . . . . . . . . . . . . . . .   6
+     7.3.  Authorization . . . . . . . . . . . . . . . . . . . . . .   6
+     7.4.  Privacy . . . . . . . . . . . . . . . . . . . . . . . . .   6
+   8.  Performance Expectations  . . . . . . . . . . . . . . . . . .   7
+   9.  Rationale and Alternatives  . . . . . . . . . . . . . . . . .   7
+   10. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
+   11. Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .   7
+   12. Normative References  . . . . . . . . . . . . . . . . . . . .   7
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   8
+
+1.  Introduction
+
+   General-purpose file systems such as NTFS, ext4, APFS, and ZFS expose
+   hierarchical namespaces optimized around human-assigned file names
+   and fixed-size block I/O.  Contemporary machine-learning systems
+   organize and retrieve information by semantic similarity (vector
+   distance), demand immutable snapshots for reproducible training, and
+   operate at data volumes that exceed the scalability envelope of bolt-
+   on index layers.  AIFS addresses these needs.
+
+
+
+
+Berman                  Expires 20 February 2026                [Page 2]
+
+Internet-Draft                    AIFS                       August 2025
+
+
+2.  Conventions and Terminology
+
+   The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”,
+   “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “NOT RECOMMENDED”, “MAY”, and
+   “OPTIONAL” in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   Asset
+      A logical unit of data (blob, tensor, embedding, model, document).
+
+   Chunk
+      A physically stored fragment of an Asset.
+
+   Embedding
+      A fixed-length vector representation of an Asset or Chunk.
+
+   Snapshot
+      A Merkle-root describing the state of a namespace at a specific
+      time.
+
+   Namespace
+      A logical grouping of Assets that share an access and retention
+      policy.
+
+3.  Architectural Overview
+
+   The AIFS stack is shown below.
+
+   +---------------------------+
+   |  Application / ML SDKs    |
+   +---------------------------+
+   |    AIFS gRPC API          |
+   +---------------------------+
+   |  Metadata & Vector Index  |
+   |  (RocksDB/FDB + HNSW/PQ)  |
+   +---------------------------+
+   |  Object/Chunk Storage     |
+   |  (NVMe-oF, HDD, S3, etc.) |
+   +---------------------------+
+   |  Optional POSIX FUSE      |
+   +---------------------------+
+   |  Kernel I/O               |
+   +---------------------------+
+
+   Data flow patterns:
+
+
+
+
+
+Berman                  Expires 20 February 2026                [Page 3]
+
+Internet-Draft                    AIFS                       August 2025
+
+
+   *  *Write*: Clients send a PutAsset RPC containing user metadata plus
+      a stream of chunks.  The server computes the BLAKE3 digest,
+      persists chunks, executes ingest operators (e.g., embedding
+      generation), updates the vector index, and returns the canonical
+      AssetID.
+
+   *  *Vector Query*: Clients use VectorSearch specifying k, distance
+      metric, and optional metadata filters.  The server returns a list
+      of AssetReference objects containing AssetIDs and scores.
+
+4.  Object Model
+
+4.1.  Asset Kinds
+
+    +==========+=============+================+=======================+
+    | Kind     | Encoding    | Schema ID      | Notes                 |
+    +==========+=============+================+=======================+
+    | Blob     | raw         | —              | Arbitrary byte stream |
+    +----------+-------------+----------------+-----------------------+
+    | Tensor   | Arrow2      | schema/nd-     | Supports n-D shapes   |
+    |          |             | array.proto    |                       |
+    +----------+-------------+----------------+-----------------------+
+    | Embed    | FlatBuffers | schema/        | One per modality/     |
+    |          |             | embedding.fbs  | model                 |
+    +----------+-------------+----------------+-----------------------+
+    | Artifact | ZIP +       | schema/        | Heterogeneous bundle  |
+    |          | MANIFEST    | artifact.proto |                       |
+    +----------+-------------+----------------+-----------------------+
+
+                          Table 1: Asset Encodings
+
+4.2.  Canonical Identifiers
+
+   aifs://<blake3-hash>        ; AssetID
+   aifs-snap://<blake3-128>    ; SnapshotID
+
+   The BLAKE3 hash MUST be lowercase hex, 256-bit output for AssetIDs;
+   SnapshotIDs are 128-bit BLAKE3 hashes of the Merkle root plus
+   timestamp.
+
+4.3.  Lineage Graph
+
+
+
+
+
+
+
+
+
+
+Berman                  Expires 20 February 2026                [Page 4]
+
+Internet-Draft                    AIFS                       August 2025
+
+
+   <CODE BEGINS>
+   message ParentEdge {
+     bytes parent_asset_id = 1;
+     string transform_name = 2;
+     bytes transform_digest = 3; // e.g., container image hash
+   }
+   <CODE ENDS>
+
+   Servers MUST provide strong causality: if Asset B lists Asset A as a
+   parent, B SHALL NOT be visible until A is fully committed.
+
+5.  Wire Protocol
+
+5.1.  Transport
+
+   Transport is gRPC over HTTP/2.  Serialization is protobuf v3 with
+   deterministic encoding.  The client MUST support zstd compression.
+
+5.2.  Core RPCs (non-exhaustive)
+
+     +===========================+===============+===================+
+     | RPC                       | Direction     | Purpose           |
+     +===========================+===============+===================+
+     | PutAsset(stream Chunk)    | client→server | Store asset;      |
+     |                           |               | returns AssetID   |
+     +---------------------------+---------------+-------------------+
+     | GetAsset(Request)         | client→server | Retrieve metadata |
+     |                           |               | and chunk list    |
+     +---------------------------+---------------+-------------------+
+     | VectorSearch(Query)       | client→server | k-NN search over  |
+     |                           |               | embeddings        |
+     +---------------------------+---------------+-------------------+
+     | CreateSnapshot(Namespace) | client→server | Atomically cut    |
+     |                           |               | snapshot          |
+     +---------------------------+---------------+-------------------+
+     | SubscribeEvents(filter)   | client→server | Server push for   |
+     |                           |               | lineage/drift     |
+     +---------------------------+---------------+-------------------+
+
+                                  Table 2
+
+5.3.  Error Handling
+
+   All RPC errors MUST map to gRPC status codes.  The server SHOULD
+   populate the google.rpc.Status message with a machine-readable reason
+   and a human-readable detail.
+
+
+
+
+
+Berman                  Expires 20 February 2026                [Page 5]
+
+Internet-Draft                    AIFS                       August 2025
+
+
+6.  Snapshot and Versioning Model
+
+6.1.  Merkle Tree Structure
+
+   SnapshotRoot
+   ├── AssetID_1  (BLAKE3)
+   ├── AssetID_2
+   └── …
+
+   The root node MUST be signed with Ed25519 according to [RFC8032].
+
+6.2.  Branches and Tags
+
+   Branch updates MUST be atomic.  Immutable tags SHOULD be used for
+   audit-grade provenance (e.g., “dataset v1.2 regulatory-export”).
+
+6.3.  POSIX View
+
+   The optional FUSE driver MUST expose files by BLAKE3 hash and may
+   synthesize directories based on branch names.
+
+7.  Security Considerations
+
+7.1.  Confidentiality
+
+   Every chunk MUST be encrypted with AES-256-GCM.  Per-chunk data keys
+   SHALL be wrapped by a customer-managed KMS using envelope encryption.
+
+7.2.  Integrity and Authenticity
+
+   Integrity is verified by BLAKE3.  Snapshot roots MUST be signed using
+   Ed25519 and verified before exposure.
+
+7.3.  Authorization
+
+   Capability tokens (macaroons) SHALL encode namespace, allowed
+   methods, and expiry.  Servers MUST validate tokens on every RPC.
+
+7.4.  Privacy
+
+   Differential privacy budgets are out of scope but MAY be enforced by
+   policy engines attached to lineage events.
+
+
+
+
+
+
+
+
+
+Berman                  Expires 20 February 2026                [Page 6]
+
+Internet-Draft                    AIFS                       August 2025
+
+
+8.  Performance Expectations
+
+    +=====================================+===========================+
+    | Metric                              | Target (per node)         |
+    +=====================================+===========================+
+    | Random IOPS (4 KiB, read)           | ≥ 1 M IOPS (P50 < 200 µs) |
+    +-------------------------------------+---------------------------+
+    | Vector search latency (1 B vectors) | P99 < 1 ms (cosine, k=10) |
+    +-------------------------------------+---------------------------+
+    | Snapshot creation (100 k Assets)    | ≤ 200 ms                  |
+    +-------------------------------------+---------------------------+
+    | Ingest throughput (sequential)      | ≥ 5 GB/s per proxy        |
+    +-------------------------------------+---------------------------+
+
+                                  Table 3
+
+9.  Rationale and Alternatives
+
+   BLAKE3 offers tree-hashing and SIMD acceleration with strong
+   security; gRPC provides ubiquitous tooling and streaming; FlatBuffers
+   fit fixed-layout vectors without varint overhead.
+
+10.  IANA Considerations
+
+   This document registers the URI schemes aifs and aifs-snap in the
+   “URI Schemes” registry following the procedures in [RFC7595].
+
+11.  Acknowledgements
+
+   The authors thank the early adopters and the open-source community
+   for their invaluable feedback.
+
+12.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, May 2017,
+              <https://www.rfc-editor.org/rfc/rfc8174>.
+
+   [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
+              Signature Algorithm (EdDSA)", RFC 8032, January 2017,
+              <https://www.rfc-editor.org/rfc/rfc8032>.
+
+
+
+
+
+
+Berman                  Expires 20 February 2026                [Page 7]
+
+Internet-Draft                    AIFS                       August 2025
+
+
+   [RFC7595]  Thaler, D., "Guidelines and Registration Procedures for
+              URI Schemes", BCP 115, RFC 7595, June 2015,
+              <https://www.rfc-editor.org/rfc/rfc7595>.
+
+Author's Address
+
+   Uri Berman
+   Even-Derech-IT
+   Email: uri@example.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Berman                  Expires 20 February 2026                [Page 8]
