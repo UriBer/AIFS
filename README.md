@@ -421,7 +421,7 @@ class VectorDB:
 ### Development Setup
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://github.com/UriBer/AIFS.git
 cd local_implementation
 
 # Install development dependencies
