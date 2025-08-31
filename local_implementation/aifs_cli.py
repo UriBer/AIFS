@@ -46,6 +46,7 @@ def put_asset(
     parent_ids: List[str] = typer.Option([], help="Parent asset IDs"),
     transform_name: Optional[str] = typer.Option(None, help="Transform name for lineage"),
     transform_digest: Optional[str] = typer.Option(None, help="Transform digest for lineage"),
+    with_embedding: bool = typer.Option(False, help="Generate and include embedding for vector search"),
 ):
     """Store an asset in AIFS."""
     # Check if file exists
@@ -100,14 +101,28 @@ def put_asset(
                 "transform_digest": transform_digest
             })
     
+    # Generate embedding if requested
+    embedding = None
+    if with_embedding:
+        try:
+            from aifs.embedding import embed_file
+            console.print(f"[green]Generating embedding for: {file_path}[/green]")
+            embedding = embed_file(str(file_path))
+            console.print(f"[green]Generated {embedding.shape[0]}-dimensional embedding (128 expected)[/green]")
+        except Exception as e:
+            console.print(f"[red]Error generating embedding: {e}[/red]")
+            sys.exit(1)
+    
     # Store asset
     with Progress() as progress:
         task = progress.add_task("Storing asset...", total=1)
-        asset_id = client.put_asset(data, kind=kind, metadata=metadata, parents=parents)
+        asset_id = client.put_asset(data, kind=kind, metadata=metadata, parents=parents, embedding=embedding)
         progress.update(task, completed=1)
     
     console.print(f"[green]Asset stored successfully[/green]")
     console.print(f"Asset ID: [bold]{asset_id}[/bold]")
+    if embedding is not None:
+        console.print(f"[blue]Embedding: {embedding.shape[0]}-dimensional vector (128 expected)[/blue]")
 
 
 @app.command("get")
@@ -170,41 +185,45 @@ def vector_search(
     k: int = typer.Option(5, help="Number of results to return"),
     threshold: float = typer.Option(0.0, help="Similarity threshold (0-1)"),
 ):
-    """Perform vector search in AIFS.
-    
-    Note: This is a simplified version that assumes embeddings are computed server-side.
-    In a real implementation, you would compute embeddings client-side or have a separate
-    embedding service.
-    """
+    """Perform vector search in AIFS using file content embeddings."""
     # Check if file exists
     if not query_file.exists():
         console.print(f"[red]Error: File not found: {query_file}[/red]")
         sys.exit(1)
     
-    # Read file
-    with open(query_file, "rb") as f:
-        data = f.read()
-    
-    # For demonstration purposes, create a random embedding
-    # In a real implementation, you would compute a proper embedding
-    console.print("[yellow]Note: Using random embedding for demonstration[/yellow]")
-    query_embedding = np.random.rand(1536).astype(np.float32)
+    # Generate embedding from the query file
+    try:
+        from aifs.embedding import embed_file
+        console.print(f"[green]Generating embedding for: {query_file}[/green]")
+        query_embedding = embed_file(str(query_file))
+        console.print(f"[green]Generated {query_embedding.shape[0]}-dimensional embedding (128 expected)[/green]")
+    except Exception as e:
+        console.print(f"[red]Error generating embedding: {e}[/red]")
+        sys.exit(1)
     
     # Perform search
     with Progress() as progress:
         task = progress.add_task("Searching...", total=1)
-        results = client.vector_search(query_embedding, k=k)
-        progress.update(task, completed=1)
+        try:
+            results = client.vector_search(query_embedding, k=k)
+            progress.update(task, completed=1)
+        except Exception as e:
+            console.print(f"[red]Error during vector search: {e}[/red]")
+            console.print("[yellow]Make sure the AIFS server is running with: python start_server.py[/yellow]")
+            sys.exit(1)
     
     # Display results
     if not results:
         console.print("[yellow]No results found[/yellow]")
+        console.print("[blue]Tip: Try adding some assets first with: python aifs_cli.py put <file>[/blue]")
         return
     
     table = Table(title="Search Results")
     table.add_column("#", style="dim")
     table.add_column("Asset ID", style="bold")
     table.add_column("Score")
+    table.add_column("Kind")
+    table.add_column("Size")
     table.add_column("Description")
     
     for i, result in enumerate(results):
@@ -212,18 +231,87 @@ def vector_search(
         if score < threshold:
             continue
         
-        # Get asset metadata for description
-        asset = client.get_asset(result['asset_id'], metadata_only=True)
-        description = asset['metadata'].get('description', 'N/A')
+        # Use metadata from search results
+        description = result['metadata'].get('description', 'N/A')
+        kind = result.get('kind', 'N/A')
+        size = result.get('size', 'N/A')
         
         table.add_row(
             str(i + 1),
-            result['asset_id'],
+            result['asset_id'][:12] + "...",  # Truncate long IDs
             f"{score:.4f}",
+            kind,
+            f"{size} bytes" if isinstance(size, int) else str(size),
             description
         )
     
     console.print(table)
+
+
+@app.command("put-with-embedding")
+def put_asset_with_embedding(
+    file_path: Path = typer.Argument(..., help="Path to file to store"),
+    kind: str = typer.Option("blob", help="Asset kind (blob, tensor, embed, artifact)"),
+    description: Optional[str] = typer.Option(None, help="Asset description"),
+    metadata_file: Optional[Path] = typer.Option(None, help="Path to JSON metadata file"),
+):
+    """Store an asset with automatically generated embedding for vector search."""
+    # Check if file exists
+    if not file_path.exists():
+        console.print(f"[red]Error: File not found: {file_path}[/red]")
+        sys.exit(1)
+    
+    # Read file
+    with open(file_path, "rb") as f:
+        data = f.read()
+    
+    # Generate embedding
+    try:
+        from aifs.embedding import embed_file
+        console.print(f"[green]Generating embedding for: {file_path}[/green]")
+        embedding = embed_file(str(file_path))
+        console.print(f"[green]Generated {embedding.shape[0]}-dimensional embedding (128 expected)[/green]")
+    except Exception as e:
+        console.print(f"[red]Error generating embedding: {e}[/red]")
+        sys.exit(1)
+    
+    # Prepare metadata
+    metadata = {}
+    if description:
+        metadata["description"] = description
+    if metadata_file and metadata_file.exists():
+        try:
+            import json
+            with open(metadata_file, "r") as f:
+                file_metadata = json.load(f)
+                metadata.update(file_metadata)
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not load metadata file: {e}[/yellow]")
+    
+    # Add file info to metadata
+    metadata["filename"] = file_path.name
+    metadata["file_size"] = len(data)
+    
+    # Store asset
+    with Progress() as progress:
+        task = progress.add_task("Storing asset...", total=1)
+        try:
+            asset_id = client.put_asset(
+                data=data,
+                kind=kind,
+                embedding=embedding,
+                metadata=metadata
+            )
+            progress.update(task, completed=1)
+        except Exception as e:
+            console.print(f"[red]Error storing asset: {e}[/red]")
+            console.print("[yellow]Make sure the AIFS server is running with: python start_server.py[/yellow]")
+            sys.exit(1)
+    
+    console.print(f"[green]Successfully stored asset with ID: {asset_id}[/green]")
+    console.print(f"[blue]Kind: {kind}[/blue]")
+    console.print(f"[blue]Size: {len(data)} bytes[/blue]")
+    console.print(f"[blue]Embedding: {embedding.shape[0]}-dimensional vector (128 expected)[/blue]")
 
 
 @app.command("snapshot")

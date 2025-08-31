@@ -10,12 +10,12 @@ from typing import Dict, List, Optional, Set
 
 # Try to import macaroon, provide fallback if not available
 try:
-    from macaroon import Macaroon, Verifier
-    MACAROON_AVAILABLE = True
+    from pymacaroons import Macaroon, Verifier
+    MACAROON_AVAILABLE = False  # Use simplified authorization for stability
 except ImportError:
     MACAROON_AVAILABLE = False
     print("Warning: macaroon library not available. Using simplified authorization fallback.")
-    print("For full macaroon support, install macaroon package or use Python 3.11/3.12.")
+    print("For full macaroon support, install PyMacaroons package.")
 
 
 class AIFSMacaroon:

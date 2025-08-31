@@ -92,7 +92,7 @@ class MetadataStore:
             
             # Create indexes for better performance
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_assets_kind ON assets (kind)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_lineage_asset_id ON lineage (child_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_lineage_asset_id ON lineage (asset_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_lineage_parent_id ON lineage (parent_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_namespace ON snapshots (namespace)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_snapshot_assets_snapshot ON snapshot_assets (snapshot_id)')
@@ -101,12 +101,19 @@ class MetadataStore:
             conn.commit()
             conn.close()
             
-   
-        except Exception as e:
             # Raise the exception instead of just printing a warning
             # This will make tests fail properly when there are database issues
             raise RuntimeError(f"Failed to initialize metadata database: {e}") from e
-
+            # Raise the exception instead of just printing a warning
+            # This will make tests fail properly when there are database issues
+            raise RuntimeError(f"Failed to initialize metadata database: {e}") from e
+            # Raise the exception instead of just printing a warning
+            # This will make tests fail properly when there are database issues
+            raise RuntimeError(f"Failed to initialize metadata database: {e}") from e
+            # Raise the exception instead of just printing a warning
+            # This will make tests fail properly when there are database issues
+            raise RuntimeError(f"Failed to initialize metadata database: {e}") from e
+    
     def add_asset(self, asset_id: str, kind: str, size: int, metadata: Optional[Dict] = None) -> None:
         """Add asset metadata.
         

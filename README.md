@@ -180,13 +180,13 @@ The test suite covers:
 
 ### Start the Server
 ```bash
-python start_server.py --port 50051 --root-dir ~/.aifs
+python start_server.py --port 50051 --storage-dir ~/.aifs
 ```
 
 ### Use the CLI
 ```bash
 # Store an asset
-python aifs_cli.py put --file data.txt --kind blob
+python aifs_cli.py put --kind blob ./tests/files/data.txt 
 
 # Search for assets
 python aifs_cli.py search --query "test data"
