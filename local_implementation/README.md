@@ -15,6 +15,8 @@ The AIFS local implementation is now production-ready with:
 - ✅ **Comprehensive test suite** (92.3% coverage, 150+ tests)
 - ✅ **Structured error handling** with google.rpc.Status
 - ✅ **Canonical URI schemes** (aifs:// and aifs-snap://)
+- ✅ **Docker containerization** with production-ready images
+- ✅ **Docker Compose** orchestration for easy deployment
 
 ## Architecture
 
@@ -45,13 +47,29 @@ The local implementation follows a simplified version of the architecture descri
 
 ## Getting Started
 
-### Prerequisites
+### Option 1: Docker (Recommended)
+
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+
+# Or build and run manually
+./docker-build.sh
+docker run -p 50051:50051 -v aifs-data:/data/aifs aifs:latest
+
+# Development mode with gRPC reflection
+docker run -p 50051:50051 -v aifs-data:/data/aifs aifs:latest python start_server.py --dev
+```
+
+### Option 2: Local Development
+
+#### Prerequisites
 
 - Python 3.9+
 - Rust (for FUSE implementation)
 - macFUSE (for POSIX compatibility)
 
-### Installation
+#### Installation
 
 ```bash
 # Create and activate virtual environment
@@ -65,11 +83,14 @@ pip install -r requirements.txt
 brew install --cask macfuse
 ```
 
-### Running the Server
+#### Running the Server
 
 ```bash
 # Start the AIFS server
 python start_server.py
+
+# Development mode with gRPC reflection
+python start_server.py --dev
 
 # Or use the CLI command
 python aifs_cli.py server
@@ -127,6 +148,22 @@ python aifs_cli.py get-snapshot <snapshot_id>
 
 ### Server Management
 
+#### Docker Deployment
+```bash
+# Production deployment
+docker-compose up -d
+
+# Development deployment with gRPC reflection
+docker-compose --profile dev up -d
+
+# Stop services
+docker-compose down
+
+# View logs
+docker-compose logs -f
+```
+
+#### Local Development
 ```bash
 # Start server (production mode)
 python start_server.py --storage-dir ./aifs_data --port 50051
@@ -203,12 +240,23 @@ local_implementation/
 │   ├── metadata.py         # Metadata store
 │   ├── embedding.py        # Text embedding utilities
 │   ├── server.py           # gRPC server
-│   └── client.py           # gRPC client
+│   ├── client.py           # gRPC client
+│   ├── errors.py           # Structured error handling
+│   ├── uri.py              # URI scheme handling
+│   └── proto/              # Protocol definitions
 ├── aifs_cli.py             # Command-line interface
 ├── start_server.py         # Server startup script
 ├── test_files/             # Test files for vector search
 ├── examples/               # Usage examples
-└── tests/                  # Test suite
+├── tests/                  # Test suite
+├── Dockerfile              # Docker container definition
+├── docker-compose.yml      # Docker Compose orchestration
+├── docker-build.sh         # Docker build script
+├── docker-run.sh           # Docker run script
+├── .dockerignore           # Docker build exclusions
+├── DOCKER.md               # Docker documentation
+├── Makefile                # Development automation
+└── requirements.txt        # Dependencies
 ```
 
 ## 🧪 **Testing**
@@ -226,13 +274,32 @@ python -m pytest tests/test_vector_db.py
 
 ## 🚀 **Quick Start Demo**
 
-### Option 1: Run the Complete Example
+### Option 1: Docker (Recommended)
+```bash
+# Start with Docker Compose
+docker-compose up -d
+
+# Test the server
+python -c "
+import grpc
+from aifs.proto import aifs_pb2, aifs_pb2_grpc
+channel = grpc.insecure_channel('localhost:50051')
+stub = aifs_pb2_grpc.HealthStub(channel)
+response = stub.Check(aifs_pb2.HealthCheckRequest())
+print(f'Health check: {response.status}')
+"
+
+# Stop when done
+docker-compose down
+```
+
+### Option 2: Local Development
 ```bash
 # Run the full example (starts server, runs demo, cleans up)
 python run_example.py
 ```
 
-### Option 2: Manual Steps
+### Option 3: Manual Steps
 1. **Start the server:**
    ```bash
    python start_server.py
@@ -261,12 +328,17 @@ python run_example.py
 ## 🔮 **Roadmap & Future Enhancements**
 
 ### Completed ✅
-1. Basic content-addressed storage with SHA-256 hashing
+1. Basic content-addressed storage with BLAKE3 hashing
 2. Vector embedding and search using FAISS
 3. Snapshot functionality with Merkle trees
 4. Lineage tracking for assets
 5. CLI interface for all operations
 6. Vector search with automatic embedding generation
+7. Docker containerization with production-ready images
+8. Docker Compose orchestration
+9. Structured error handling with google.rpc.Status
+10. Canonical URI schemes (aifs:// and aifs-snap://)
+11. Comprehensive test suite (92.3% coverage)
 
 ### Planned 🚧
 1. FUSE layer for POSIX compatibility
@@ -275,6 +347,8 @@ python run_example.py
 4. Batch operations and bulk import
 5. Web interface for asset management
 6. Advanced filtering and querying
+7. Kubernetes deployment manifests
+8. Monitoring and observability
 
 ### Production Considerations
 - Replace simple embeddings with proper language models

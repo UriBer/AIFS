@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # AIFS Development Server with gRPC reflection
+  aifs-dev:
+    image: uriber/aifs:dev
+    container_name: aifs-dev
+    ports:
+      - "50051:50051"
+    volumes:
+      - aifs-dev-data:/data/aifs
+      - aifs-logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - AIFS_DATA_DIR=/data/aifs
+      - AIFS_PORT=50051
+      - AIFS_HOST=0.0.0.0
+      - AIFS_LOG_LEVEL=DEBUG
+    command: python start_server.py --dev --storage-dir /data/aifs --port 50051
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - aifs-network
+
+  # Optional: grpcurl for API testing
+  grpcurl:
+    image: fullstorydev/grpcurl:latest
+    container_name: aifs-grpcurl
+    command: ["grpcurl", "-plaintext", "aifs-dev:50051", "list"]
+    depends_on:
+      - aifs-dev
+    networks:
+      - aifs-network
+
+volumes:
+  aifs-dev-data:
+    driver: local
+  aifs-logs:
+    driver: local
+
+networks:
+  aifs-network:
+    driver: bridge

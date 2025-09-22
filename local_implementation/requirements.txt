@@ -2,9 +2,10 @@
 grpcio==1.54.0
 grpcio-tools==1.54.0
 grpcio-reflection==1.54.0
+grpcio-status==1.54.0
 protobuf==4.22.3
-# Using hashlib (standard library) instead of blake3 to avoid Rust dependency
-# blake3==0.3.3
+# BLAKE3 for content addressing (as specified in AIFS architecture)
+blake3==0.3.3
 numpy==1.24.3
 
 # FAISS alternatives - try these in order:

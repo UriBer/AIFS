@@ -1,0 +1,99 @@
+# Docker ignore file for AIFS
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation (exclude most, but keep README.md for setup.py)
+README_IMPLEMENTATION.md
+API.md
+CHANGELOG.md
+CONTRIBUTING.md
+docs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# AIFS specific
+aifs_data/
+localhost/
+examples/aifs_data/
+*.db
+storage/
+vectors/
+chunks/
+test_files/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+tests/
+
+# Temporary files
+=*
+*.tmp
+*.temp
+*.log
+
+# Backup files
+*.backup
+*.bak
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+docker-*.sh
+
+# Build artifacts
+install.py
+install_faiss.py
+run_tests.py
+run_example.py

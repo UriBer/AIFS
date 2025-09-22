@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # AIFS Test Server
+  aifs-test:
+    image: uriber/aifs:latest
+    container_name: aifs-test
+    ports:
+      - "50052:50051"  # Different port to avoid conflicts
+    volumes:
+      - aifs-test-data:/data/aifs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - AIFS_DATA_DIR=/data/aifs
+      - AIFS_PORT=50051
+      - AIFS_HOST=0.0.0.0
+      - AIFS_LOG_LEVEL=DEBUG
+    restart: "no"  # Don't restart on failure for testing
+    healthcheck:
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - aifs-network
+
+  # Test Runner
+  test-runner:
+    image: uriber/aifs:latest
+    container_name: aifs-test-runner
+    volumes:
+      - aifs-test-data:/data/aifs
+      - ./test-results:/app/test-results
+    environment:
+      - AIFS_SERVER_HOST=aifs-test
+      - AIFS_SERVER_PORT=50051
+    command: |
+      sh -c "
+        echo 'Waiting for AIFS server to be ready...'
+        sleep 10
+        echo 'Running tests...'
+        python run_tests.py --output-dir /app/test-results
+        echo 'Tests completed!'
+      "
+    depends_on:
+      - aifs-test
+    networks:
+      - aifs-network
+
+volumes:
+  aifs-test-data:
+    driver: local
+
+networks:
+  aifs-network:
+    driver: bridge

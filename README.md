@@ -6,7 +6,8 @@ AI-native File System - A next-generation file system designed from the ground u
 
 **Version**: 0.1.0-alpha  
 **Test Coverage**: 92.3% (150+ tests)  
-**Implementation**: Core functionality complete
+**Implementation**: Core functionality complete  
+**Docker**: Production-ready containerization
 
 ### ✅ Implemented Features
 - **Content Addressing**: BLAKE3-based content addressing
@@ -18,10 +19,11 @@ AI-native File System - A next-generation file system designed from the ground u
 - **Authorization**: Macaroon-based capability tokens
 - **Compression**: Gzip compression for transport
 - **Error Handling**: Structured error responses with google.rpc.Status
+- **Docker Support**: Production-ready containerization with Docker Compose
 
 ### 🚧 In Progress
-- gRPC server test stability improvements
 - Performance optimization and benchmarking
+- Advanced monitoring and metrics
 
 ### 📋 Planned Features
 - Asset Kinds (Tensor, Embed, Artifact)
@@ -31,13 +33,25 @@ AI-native File System - A next-generation file system designed from the ground u
 
 ## 🚀 Quick Start
 
-### Option 1: Automated Installation (Recommended)
+### Option 1: Docker (Recommended)
+```bash
+cd local_implementation
+
+# Build and run with Docker Compose
+docker-compose up -d
+
+# Or build and run manually
+./docker-build.sh
+docker run -p 50051:50051 -v aifs-data:/data/aifs aifs:latest
+```
+
+### Option 2: Automated Installation
 ```bash
 cd local_implementation
 python install.py
 ```
 
-### Option 2: Manual Installation
+### Option 3: Manual Installation
 ```bash
 cd local_implementation
 pip install -r requirements.txt
@@ -149,12 +163,14 @@ local_implementation/
 │   ├── client.py                  # gRPC client
 │   ├── compression.py             # Compression service
 │   ├── crypto.py                  # Cryptographic operations
+│   ├── errors.py                  # Structured error handling
 │   ├── fuse.py                    # FUSE layer
 │   ├── merkle.py                  # Merkle tree implementation
 │   ├── metadata.py                # Metadata store
 │   ├── proto/                     # Protocol definitions
 │   ├── server.py                  # gRPC server
 │   ├── storage.py                 # Storage backend
+│   ├── uri.py                     # URI scheme handling
 │   └── vector_db.py               # Vector database (FAISS + fallback)
 ├── tests/                         # Comprehensive test suite
 │   ├── test_asset_manager.py      # Asset manager tests
@@ -164,7 +180,12 @@ local_implementation/
 │   ├── test_compression.py        # Compression tests
 │   ├── test_crypto.py             # Cryptographic tests
 │   ├── test_merkle_tree.py        # Merkle tree tests
-│   └── test_storage.py            # Storage tests
+│   ├── test_storage.py            # Storage tests
+│   ├── test_blake3_uri.py         # BLAKE3 and URI tests
+│   ├── test_error_handling.py     # Error handling tests
+│   ├── test_encryption_kms.py     # Encryption and KMS tests
+│   ├── test_grpc_server.py        # gRPC server tests
+│   └── test_merkle_blake3.py      # Merkle tree with BLAKE3 tests
 ├── examples/                      # Usage examples
 ├── install.py                     # Automated installer
 ├── install_faiss.py               # FAISS installation helper
@@ -172,6 +193,13 @@ local_implementation/
 ├── start_server.py                # Server startup script
 ├── aifs_cli.py                    # Command-line interface
 ├── requirements.txt               # Dependencies
+├── Dockerfile                     # Docker container definition
+├── docker-compose.yml             # Docker Compose orchestration
+├── docker-build.sh                # Docker build script
+├── docker-run.sh                  # Docker run script
+├── .dockerignore                  # Docker build exclusions
+├── DOCKER.md                      # Docker documentation
+├── Makefile                       # Development automation
 └── README_IMPLEMENTATION.md       # Detailed implementation guide
 ```
 
@@ -205,9 +233,26 @@ The test suite covers:
 
 ## 🚀 Usage Examples
 
-### Start the Server
+### Docker Deployment
 ```bash
+# Start with Docker Compose (recommended)
+docker-compose up -d
+
+# Or run manually
+./docker-build.sh
+docker run -p 50051:50051 -v aifs-data:/data/aifs aifs:latest
+
+# Development mode with gRPC reflection
+docker run -p 50051:50051 -v aifs-data:/data/aifs aifs:latest python start_server.py --dev
+```
+
+### Local Development
+```bash
+# Start the server
 python start_server.py --port 50051 --storage-dir ~/.aifs
+
+# Development mode with gRPC reflection
+python start_server.py --dev --port 50051 --storage-dir ~/.aifs
 ```
 
 ### Use the CLI
@@ -448,6 +493,7 @@ class VectorDB:
 - [Architecture Specification](docs/spec/rfc/0001-aifs-architecture.md)
 - [Implementation Guide](local_implementation/README.md)
 - [API Documentation](local_implementation/API.md)
+- [Docker Documentation](local_implementation/DOCKER.md)
 - [Changelog](CHANGELOG.md)
 - [Client App Specification](local_implementation/docs/AIFS_CLIENT_APP_SPEC.md)
 

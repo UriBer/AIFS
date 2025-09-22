@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # AIFS Production Server
+  aifs:
+    image: uriber/aifs:latest
+    container_name: aifs-server
+    ports:
+      - "50051:50051"
+    volumes:
+      - aifs-data:/data/aifs
+      - aifs-logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - AIFS_DATA_DIR=/data/aifs
+      - AIFS_PORT=50051
+      - AIFS_HOST=0.0.0.0
+      - AIFS_LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - aifs-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Optional: Monitoring with Prometheus (if you have a monitoring stack)
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: aifs-prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+  #   networks:
+  #     - aifs-network
+
+volumes:
+  aifs-data:
+    driver: local
+  aifs-logs:
+    driver: local
+
+networks:
+  aifs-network:
+    driver: bridge

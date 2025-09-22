@@ -1,0 +1,40 @@
+# AIFS Docker Hub Publishing .gitignore
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Docker volumes
+aifs-*-data/
+
+# Test results
+test-results/
+test-output/
+
+# Logs
+logs/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Docker
+.dockerignore

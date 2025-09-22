@@ -6,6 +6,26 @@ This document provides comprehensive API documentation for the AIFS (AI-Native F
 
 AIFS provides a high-performance gRPC API for content-addressed storage, vector search, and versioned snapshots. The API is designed for AI/ML workloads with semantic search capabilities.
 
+## Quick Start
+
+### Docker Deployment (Recommended)
+```bash
+# Start with Docker Compose
+docker-compose up -d
+
+# Test the API
+grpcurl -plaintext localhost:50051 list
+```
+
+### Local Development
+```bash
+# Start server in development mode
+python start_server.py --dev
+
+# Test with grpcurl
+grpcurl -plaintext localhost:50051 list
+```
+
 ## Services
 
 ### 1. AIFS Service
