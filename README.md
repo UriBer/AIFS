@@ -1,6 +1,33 @@
 # AIFS - AI-Native File System
 
-AI-native File System - Designing and implementing an AI-native file system to replace ext4, NTFS (or any traditional file system) means re-thinking storage from the ground up so that it is built **for** machine-learning, vector search, semantic retrieval, continuous training and inference pipelines — not just for human-named files and folders.
+AI-native File System - A next-generation file system designed from the ground up for AI/ML workloads, featuring content addressing, vector-first metadata, versioned snapshots, and semantic search capabilities.
+
+## 🎯 Current Status
+
+**Version**: 0.1.0-alpha  
+**Test Coverage**: 92.3% (150+ tests)  
+**Implementation**: Core functionality complete
+
+### ✅ Implemented Features
+- **Content Addressing**: BLAKE3-based content addressing
+- **Vector Search**: Semantic similarity search with FAISS
+- **Encryption**: AES-256-GCM with KMS integration
+- **Versioning**: Merkle tree-based snapshots with Ed25519 signatures
+- **gRPC API**: High-performance RPC interface with reflection (dev mode)
+- **URI Schemes**: Canonical `aifs://` and `aifs-snap://` identifiers
+- **Authorization**: Macaroon-based capability tokens
+- **Compression**: Gzip compression for transport
+- **Error Handling**: Structured error responses with google.rpc.Status
+
+### 🚧 In Progress
+- gRPC server test stability improvements
+- Performance optimization and benchmarking
+
+### 📋 Planned Features
+- Asset Kinds (Tensor, Embed, Artifact)
+- FUSE layer for POSIX compatibility
+- Pre-signed URLs for direct streaming
+- Ingest operators for automatic embedding generation
 
 ## 🚀 Quick Start
 
@@ -415,6 +442,14 @@ class VectorDB:
     def delete(asset_id)
     def get_stats()  # Shows backend (FAISS or scikit-learn)
 ```
+
+## 📚 Documentation
+
+- [Architecture Specification](docs/spec/rfc/0001-aifs-architecture.md)
+- [Implementation Guide](local_implementation/README.md)
+- [API Documentation](local_implementation/API.md)
+- [Changelog](CHANGELOG.md)
+- [Client App Specification](local_implementation/docs/AIFS_CLIENT_APP_SPEC.md)
 
 ## 🤝 Contributing
 

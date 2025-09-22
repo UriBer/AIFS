@@ -1,11 +1,78 @@
 
-.venv/*
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
 .env
-*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
-__pycache__/*
-/proto/*
-local_implementation/aifs.egg-info/*
-.vscode/*
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# AIFS specific
+local_implementation/aifs_data/
+local_implementation/localhost/
+local_implementation/examples/aifs_data/
+local_implementation/*.db
+local_implementation/storage/
+local_implementation/vectors/
+local_implementation/chunks/
+local_implementation/test_files/
+
+# Generated files
+local_implementation/aifs/proto/*_pb2.py
+local_implementation/aifs/proto/*_pb2_grpc.py
+local_implementation/aifs.egg-info/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Temporary files
 =*
-.DS_Store
+*.tmp
+*.temp
+*.log
+
+# Backup files
+*.backup
+*.bak

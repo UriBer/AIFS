@@ -10,11 +10,11 @@ setup(
     name="aifs",
     version="0.1.0",
     author="AIFS Team",
-    author_email="aifs@example.com",
+    author_email="urib@even-derech-it.com",
     description="AI-Native File System (AIFS) - Local Implementation",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/aifs",
+    url="https://github.com/UriBer/aifs",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",

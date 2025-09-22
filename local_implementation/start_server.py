@@ -29,6 +29,10 @@ def parse_args():
         "--storage-dir", type=str, default="./aifs_data",
         help="Storage directory (default: ./aifs_data)"
     )
+    parser.add_argument(
+        "--dev", action="store_true",
+        help="Enable development mode (gRPC reflection, debug features)"
+    )
     return parser.parse_args()
 
 
@@ -42,7 +46,8 @@ def main():
     storage_dir.mkdir(parents=True, exist_ok=True)
     
     # Print server info
-    print(f"Starting AIFS server on {args.host}:{args.port}")
+    mode = "development" if args.dev else "production"
+    print(f"Starting AIFS server on {args.host}:{args.port} ({mode} mode)")
     print(f"Storage directory: {storage_dir}")
     print("Press Ctrl+C to stop")
     
@@ -54,7 +59,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     
     # Start server
-    serve(root_dir=storage_dir, port=args.port, max_workers=10)
+    serve(root_dir=storage_dir, port=args.port, max_workers=10, dev_mode=args.dev)
 
 
 if __name__ == "__main__":

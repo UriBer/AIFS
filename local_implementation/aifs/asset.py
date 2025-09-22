@@ -1,7 +1,7 @@
 """AIFS Asset Management
 
 Implements core asset management functionality with proper Merkle trees and signatures.
-Note: Using SHA-256 instead of BLAKE3 to avoid Rust dependency.
+Uses BLAKE3 for content addressing as specified in the AIFS architecture.
 """
 
 import os
@@ -14,13 +14,14 @@ from .vector_db import VectorDB
 from .metadata import MetadataStore
 from .merkle import MerkleTree
 from .crypto import CryptoManager
+from .uri import AIFSUri
 
 
 class AssetManager:
     """Asset manager for AIFS.
     
     Integrates storage, vector database, metadata components, and cryptographic operations.
-    Note: Using SHA-256 instead of BLAKE3 to avoid Rust dependency.
+    Uses BLAKE3 for content addressing as specified in the AIFS architecture.
     """
     
     def __init__(self, root_dir: Union[str, pathlib.Path], embedding_dim: int = 128,
@@ -56,10 +57,14 @@ class AssetManager:
                      [{"asset_id": str, "transform_name": str, "transform_digest": str}]
             
         Returns:
-            Asset ID (SHA-256 hash)
+            Asset ID (BLAKE3 hash)
         """
         # Store data and get content hash
         asset_id = self.storage.put(data)
+        
+        # Validate that we got a proper BLAKE3 hash
+        if not AIFSUri.is_valid_blake3_hash(asset_id):
+            raise ValueError(f"Storage returned invalid hash: {asset_id}")
         
         # Store metadata
         self.metadata_db.add_asset(asset_id, kind, len(data), metadata)
@@ -84,11 +89,67 @@ class AssetManager:
         
         return asset_id
     
+    def list_assets(self, limit: int = 100, offset: int = 0) -> List[Dict]:
+        """List assets.
+        
+        Args:
+            limit: Maximum number of assets to return
+            offset: Number of assets to skip
+            
+        Returns:
+            List of asset metadata dictionaries
+        """
+        return self.metadata_db.list_assets(limit=limit, offset=offset)
+    
+    def get_asset_uri(self, asset_id: str) -> str:
+        """Get aifs:// URI for an asset.
+        
+        Args:
+            asset_id: Asset ID (BLAKE3 hash)
+            
+        Returns:
+            aifs:// URI string
+        """
+        return AIFSUri.asset_id_to_uri(asset_id)
+    
+    def get_snapshot_uri(self, snapshot_id: str) -> str:
+        """Get aifs-snap:// URI for a snapshot.
+        
+        Args:
+            snapshot_id: Snapshot ID (BLAKE3 hash)
+            
+        Returns:
+            aifs-snap:// URI string
+        """
+        return AIFSUri.snapshot_id_to_uri(snapshot_id)
+    
+    def parse_asset_uri(self, uri: str) -> Optional[str]:
+        """Parse aifs:// URI to get asset ID.
+        
+        Args:
+            uri: aifs:// URI string
+            
+        Returns:
+            Asset ID or None if invalid
+        """
+        return AIFSUri.parse_asset_uri(uri)
+    
+    def parse_snapshot_uri(self, uri: str) -> Optional[str]:
+        """Parse aifs-snap:// URI to get snapshot ID.
+        
+        Args:
+            uri: aifs-snap:// URI string
+            
+        Returns:
+            Snapshot ID or None if invalid
+        """
+        return AIFSUri.parse_snapshot_uri(uri)
+    
     def get_asset(self, asset_id: str) -> Optional[Dict]:
         """Retrieve an asset.
         
         Args:
-            asset_id: Asset ID (SHA-256 hash)
+            asset_id: Asset ID (BLAKE3 hash)
             
         Returns:
             Asset dictionary or None if not found
@@ -266,3 +327,44 @@ class AssetManager:
             Public key as hex string
         """
         return self.crypto_manager.get_public_key_hex()
+    
+    def delete_asset(self, asset_id: str, force: bool = False) -> bool:
+        """Delete an asset.
+        
+        Args:
+            asset_id: Asset ID to delete
+            force: If True, delete even if referenced by other assets
+            
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        try:
+            # Check if asset exists
+            asset = self.get_asset(asset_id)
+            if not asset:
+                return False
+            
+            # Check if asset is referenced by other assets (unless force=True)
+            if not force:
+                children = self.metadata_db.get_children(asset_id)
+                if children:
+                    raise ValueError(f"Asset {asset_id} is referenced by {len(children)} other assets. Use force=True to delete anyway.")
+            
+            # Remove from vector database if it has an embedding
+            try:
+                self.vector_db.remove(asset_id)
+            except:
+                pass  # Ignore if not in vector DB
+            
+            # Remove from storage
+            self.storage.delete(asset_id)
+            
+            # Remove from metadata database
+            # Note: This would need a delete_asset method in metadata_db
+            # For now, we'll just mark it as deleted in metadata
+            self.metadata_db.add_asset(asset_id, "deleted", 0, {"deleted": True})
+            
+            return True
+        except Exception as e:
+            logging.error(f"Error deleting asset {asset_id}: {e}")
+            return False

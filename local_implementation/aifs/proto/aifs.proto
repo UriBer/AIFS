@@ -57,6 +57,7 @@ message GetAssetResponse {
   repeated ParentEdge parents = 2;
   repeated string children = 3;  // Child asset IDs
   bytes data = 4;  // Only included if include_data is true
+  string uri = 5;  // aifs:// URI for the asset
 }
 
 // Vector search request
@@ -76,6 +77,46 @@ message SearchResult {
 // Vector search response
 message VectorSearchResponse {
   repeated SearchResult results = 1;
+}
+
+// List assets request
+message ListAssetsRequest {
+  int32 limit = 1;  // Maximum number of assets to return
+  int32 offset = 2;  // Number of assets to skip
+}
+
+// List assets response
+message ListAssetsResponse {
+  repeated AssetMetadata assets = 1;
+}
+
+// Subscribe events request
+message SubscribeEventsRequest {
+  string filter = 1;  // Optional filter for events
+  bool include_lineage = 2;  // Include lineage events
+  bool include_drift = 3;  // Include drift events
+}
+
+// Event message
+message Event {
+  string event_id = 1;
+  string event_type = 2;  // "asset_created", "asset_updated", "lineage_added", etc.
+  string asset_id = 3;
+  string namespace = 4;
+  int64 timestamp = 5;
+  map<string, string> metadata = 6;
+}
+
+// Subscribe events response
+message SubscribeEventsResponse {
+  repeated Event events = 1;
+}
+
+// Error response
+message ErrorResponse {
+  int32 code = 1;  // gRPC status code
+  string reason = 2;
+  string detail = 3;
 }
 
 // Create snapshot request
@@ -106,6 +147,75 @@ message GetSnapshotResponse {
   repeated string asset_ids = 6;
 }
 
+// Delete asset request
+message DeleteAssetRequest {
+  string asset_id = 1;
+  bool force = 2;  // Force deletion even if referenced by other assets
+}
+
+// Delete asset response
+message DeleteAssetResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// List namespaces request
+message ListNamespacesRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+// List namespaces response
+message ListNamespacesResponse {
+  repeated NamespaceInfo namespaces = 1;
+}
+
+// Namespace information
+message NamespaceInfo {
+  string namespace_id = 1;
+  string name = 2;
+  string description = 3;
+  string created_at = 4;
+  map<string, string> metadata = 5;
+}
+
+// Get namespace request
+message GetNamespaceRequest {
+  string namespace_id = 1;
+}
+
+// Get namespace response
+message GetNamespaceResponse {
+  NamespaceInfo namespace = 1;
+}
+
+// Verify asset request
+message VerifyAssetRequest {
+  string asset_id = 1;
+}
+
+// Verify asset response
+message VerifyAssetResponse {
+  bool valid = 1;
+  string message = 2;
+  string computed_hash = 3;
+  string stored_hash = 4;
+}
+
+// Verify snapshot request
+message VerifySnapshotRequest {
+  string snapshot_id = 1;
+  bytes public_key = 2;  // Optional public key for signature verification
+}
+
+// Verify snapshot response
+message VerifySnapshotResponse {
+  bool valid = 1;
+  string message = 2;
+  string merkle_root = 3;
+  bool signature_valid = 4;
+}
+
 // AIFS service
 service AIFS {
   // Store an asset
@@ -113,6 +223,12 @@ service AIFS {
   
   // Retrieve an asset
   rpc GetAsset(GetAssetRequest) returns (GetAssetResponse);
+  
+  // Delete an asset
+  rpc DeleteAsset(DeleteAssetRequest) returns (DeleteAssetResponse);
+  
+  // List assets
+  rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse);
   
   // Search for similar assets
   rpc VectorSearch(VectorSearchRequest) returns (VectorSearchResponse);
@@ -122,6 +238,21 @@ service AIFS {
   
   // Get a snapshot
   rpc GetSnapshot(GetSnapshotRequest) returns (GetSnapshotResponse);
+  
+  // Subscribe to events
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream SubscribeEventsResponse);
+  
+  // List namespaces
+  rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse);
+  
+  // Get namespace
+  rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse);
+  
+  // Verify asset integrity
+  rpc VerifyAsset(VerifyAssetRequest) returns (VerifyAssetResponse);
+  
+  // Verify snapshot integrity and signature
+  rpc VerifySnapshot(VerifySnapshotRequest) returns (VerifySnapshotResponse);
 }
 
 // Health service

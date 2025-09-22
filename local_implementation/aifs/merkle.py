@@ -1,10 +1,10 @@
 """AIFS Merkle Tree Implementation
 
 Implements Merkle tree functionality for snapshots.
-Note: Using SHA-256 instead of BLAKE3 to avoid Rust dependency.
+Uses BLAKE3 for hashing as specified in the AIFS architecture.
 """
 
-import hashlib
+import blake3
 from typing import List, Dict, Optional, Tuple
 
 
@@ -27,14 +27,14 @@ class MerkleTree:
     
     Builds a binary Merkle tree from asset IDs and provides methods for
     verification and proof generation.
-    Note: Using SHA-256 instead of BLAKE3 to avoid Rust dependency.
+    Uses BLAKE3 for hashing as specified in the AIFS architecture.
     """
     
     def __init__(self, asset_ids: List[str]):
         """Initialize Merkle tree with asset IDs.
         
         Args:
-            asset_ids: List of asset IDs (SHA-256 hashes)
+            asset_ids: List of asset IDs (BLAKE3 hashes)
         """
         # Sort asset IDs for deterministic tree structure
         self.asset_ids = sorted(asset_ids)
@@ -48,7 +48,7 @@ class MerkleTree:
         """
         if not self.asset_ids:
             # Empty tree
-            empty_hash = hashlib.sha256(b"").hexdigest()
+            empty_hash = blake3.blake3(b"").hexdigest()
             return MerkleNode(empty_hash, is_leaf=True)
         
         if len(self.asset_ids) == 1:
@@ -87,9 +87,9 @@ class MerkleTree:
         Returns:
             Hash of the concatenated pair
         """
-        # Concatenate hashes and compute SHA-256
+        # Concatenate hashes and compute BLAKE3
         combined = f"{left_hash}:{right_hash}".encode()
-        return hashlib.sha256(combined).hexdigest()
+        return blake3.blake3(combined).hexdigest()
     
     def get_root_hash(self) -> str:
         """Get the root hash of the Merkle tree.
@@ -204,3 +204,13 @@ class MerkleTree:
                 }
         
         return _node_to_dict(self.root)
+    
+    def generate_proof(self, asset_id: str) -> Optional[List[Tuple[str, str]]]:
+        """Generate Merkle proof for an asset (alias for get_proof)."""
+        return self.get_proof(asset_id)
+    
+    def get_leaf_hashes(self) -> List[str]:
+        """Get all leaf hashes in the tree."""
+        if not self.root:
+            return []
+        return self._get_leaf_hashes(self.root)

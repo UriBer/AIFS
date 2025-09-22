@@ -22,8 +22,36 @@ class AIFSClient:
         Args:
             server_address: Address of the AIFS server
         """
-        self.channel = grpc.insecure_channel(server_address)
+        # Configure gRPC options for large file support and compression
+        options = [
+            ('grpc.max_send_message_length', 100 * 1024 * 1024),  # 100MB
+            ('grpc.max_receive_message_length', 100 * 1024 * 1024),  # 100MB
+            ('grpc.max_message_length', 100 * 1024 * 1024),  # 100MB
+            ('grpc.default_compression_algorithm', grpc.Compression.Gzip),  # Enable compression
+        ]
+        
+        self.channel = grpc.insecure_channel(server_address, options=options)
         self.stub = aifs_pb2_grpc.AIFSStub(self.channel)
+        self.auth_token = None
+    
+    def set_auth_token(self, token: str):
+        """Set the authorization token for requests.
+        
+        Args:
+            token: Authorization token string
+        """
+        self.auth_token = token
+    
+    def _get_metadata(self) -> List[tuple]:
+        """Get metadata for gRPC requests including authorization.
+        
+        Returns:
+            List of metadata tuples
+        """
+        metadata = []
+        if self.auth_token:
+            metadata.append(('authorization', f'Bearer {self.auth_token}'))
+        return metadata
     
     def put_asset(self, data: bytes, kind: str = "blob", 
                  embedding: Optional[np.ndarray] = None,
@@ -87,9 +115,69 @@ class AIFSClient:
                 yield request
         
         # Call gRPC method
-        response = self.stub.PutAsset(request_generator())
+        response = self.stub.PutAsset(request_generator(), metadata=self._get_metadata())
         
         return response.asset_id
+    
+    def list_assets(self, limit: int = 100, offset: int = 0) -> List[Dict]:
+        """List assets.
+        
+        Args:
+            limit: Maximum number of assets to return
+            offset: Number of assets to skip
+            
+        Returns:
+            List of asset metadata dictionaries
+        """
+        # Create request
+        request = aifs_pb2.ListAssetsRequest(limit=limit, offset=offset)
+        
+        # Call gRPC method
+        response = self.stub.ListAssets(request, metadata=self._get_metadata())
+        
+        # Convert response to list of dictionaries
+        assets = []
+        for asset in response.assets:
+            assets.append({
+                "asset_id": asset.asset_id,
+                "kind": aifs_pb2.AssetKind.Name(asset.kind).lower(),
+                "size": asset.size,
+                "created_at": asset.created_at,
+                "metadata": dict(asset.metadata)
+            })
+        
+        return assets
+    
+    def subscribe_events(self, filter: str = "", include_lineage: bool = True, 
+                        include_drift: bool = True) -> Iterator[Dict]:
+        """Subscribe to events.
+        
+        Args:
+            filter: Optional filter for events
+            include_lineage: Include lineage events
+            include_drift: Include drift events
+            
+        Yields:
+            Event dictionaries
+        """
+        # Create request
+        request = aifs_pb2.SubscribeEventsRequest(
+            filter=filter,
+            include_lineage=include_lineage,
+            include_drift=include_drift
+        )
+        
+        # Call gRPC method
+        for response in self.stub.SubscribeEvents(request, metadata=self._get_metadata()):
+            for event in response.events:
+                yield {
+                    "event_id": event.event_id,
+                    "event_type": event.event_type,
+                    "asset_id": event.asset_id,
+                    "namespace": event.namespace,
+                    "timestamp": event.timestamp,
+                    "metadata": dict(event.metadata)
+                }
     
     def get_asset(self, asset_id: str, include_data: bool = True) -> Optional[Dict]:
         """Retrieve an asset.
@@ -109,7 +197,7 @@ class AIFSClient:
         
         try:
             # Call gRPC method
-            response = self.stub.GetAsset(request)
+            response = self.stub.GetAsset(request, metadata=self._get_metadata())
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.NOT_FOUND:
                 return None
@@ -164,7 +252,7 @@ class AIFSClient:
                 request.filter[key] = value
         
         # Call gRPC method
-        response = self.stub.VectorSearch(request)
+        response = self.stub.VectorSearch(request, metadata=self._get_metadata())
         
         # Convert response to list of dictionaries
         results = []
@@ -205,7 +293,7 @@ class AIFSClient:
                 request.metadata[key] = str(value)
         
         # Call gRPC method
-        response = self.stub.CreateSnapshot(request)
+        response = self.stub.CreateSnapshot(request, metadata=self._get_metadata())
         
         return {
             "snapshot_id": response.snapshot_id,
@@ -228,7 +316,7 @@ class AIFSClient:
         
         try:
             # Call gRPC method
-            response = self.stub.GetSnapshot(request)
+            response = self.stub.GetSnapshot(request, metadata=self._get_metadata())
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.NOT_FOUND:
                 return None

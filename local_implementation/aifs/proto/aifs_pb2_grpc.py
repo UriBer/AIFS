@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import aifs_pb2 as aifs__pb2
+from aifs.proto import aifs_pb2 as aifs_dot_proto_dot_aifs__pb2
 
 GRPC_GENERATED_VERSION = '1.74.0'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in aifs_pb2_grpc.py depends on'
+        + f' but the generated code in aifs/proto/aifs_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -37,28 +37,63 @@ class AIFSStub(object):
         """
         self.PutAsset = channel.stream_unary(
                 '/aifs.v1.AIFS/PutAsset',
-                request_serializer=aifs__pb2.PutAssetRequest.SerializeToString,
-                response_deserializer=aifs__pb2.PutAssetResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.PutAssetRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.PutAssetResponse.FromString,
                 _registered_method=True)
         self.GetAsset = channel.unary_unary(
                 '/aifs.v1.AIFS/GetAsset',
-                request_serializer=aifs__pb2.GetAssetRequest.SerializeToString,
-                response_deserializer=aifs__pb2.GetAssetResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.GetAssetRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.GetAssetResponse.FromString,
+                _registered_method=True)
+        self.DeleteAsset = channel.unary_unary(
+                '/aifs.v1.AIFS/DeleteAsset',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.DeleteAssetRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.DeleteAssetResponse.FromString,
+                _registered_method=True)
+        self.ListAssets = channel.unary_unary(
+                '/aifs.v1.AIFS/ListAssets',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.ListAssetsRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.ListAssetsResponse.FromString,
                 _registered_method=True)
         self.VectorSearch = channel.unary_unary(
                 '/aifs.v1.AIFS/VectorSearch',
-                request_serializer=aifs__pb2.VectorSearchRequest.SerializeToString,
-                response_deserializer=aifs__pb2.VectorSearchResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.VectorSearchRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.VectorSearchResponse.FromString,
                 _registered_method=True)
         self.CreateSnapshot = channel.unary_unary(
                 '/aifs.v1.AIFS/CreateSnapshot',
-                request_serializer=aifs__pb2.CreateSnapshotRequest.SerializeToString,
-                response_deserializer=aifs__pb2.CreateSnapshotResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.CreateSnapshotRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.CreateSnapshotResponse.FromString,
                 _registered_method=True)
         self.GetSnapshot = channel.unary_unary(
                 '/aifs.v1.AIFS/GetSnapshot',
-                request_serializer=aifs__pb2.GetSnapshotRequest.SerializeToString,
-                response_deserializer=aifs__pb2.GetSnapshotResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.GetSnapshotRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.GetSnapshotResponse.FromString,
+                _registered_method=True)
+        self.SubscribeEvents = channel.unary_stream(
+                '/aifs.v1.AIFS/SubscribeEvents',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.SubscribeEventsRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.SubscribeEventsResponse.FromString,
+                _registered_method=True)
+        self.ListNamespaces = channel.unary_unary(
+                '/aifs.v1.AIFS/ListNamespaces',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.ListNamespacesRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.ListNamespacesResponse.FromString,
+                _registered_method=True)
+        self.GetNamespace = channel.unary_unary(
+                '/aifs.v1.AIFS/GetNamespace',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.GetNamespaceRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.GetNamespaceResponse.FromString,
+                _registered_method=True)
+        self.VerifyAsset = channel.unary_unary(
+                '/aifs.v1.AIFS/VerifyAsset',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.VerifyAssetRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.VerifyAssetResponse.FromString,
+                _registered_method=True)
+        self.VerifySnapshot = channel.unary_unary(
+                '/aifs.v1.AIFS/VerifySnapshot',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.VerifySnapshotRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.VerifySnapshotResponse.FromString,
                 _registered_method=True)
 
 
@@ -75,6 +110,20 @@ class AIFSServicer(object):
 
     def GetAsset(self, request, context):
         """Retrieve an asset
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteAsset(self, request, context):
+        """Delete an asset
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListAssets(self, request, context):
+        """List assets
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -101,33 +150,103 @@ class AIFSServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SubscribeEvents(self, request, context):
+        """Subscribe to events
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListNamespaces(self, request, context):
+        """List namespaces
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetNamespace(self, request, context):
+        """Get namespace
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def VerifyAsset(self, request, context):
+        """Verify asset integrity
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def VerifySnapshot(self, request, context):
+        """Verify snapshot integrity and signature
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_AIFSServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'PutAsset': grpc.stream_unary_rpc_method_handler(
                     servicer.PutAsset,
-                    request_deserializer=aifs__pb2.PutAssetRequest.FromString,
-                    response_serializer=aifs__pb2.PutAssetResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.PutAssetRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.PutAssetResponse.SerializeToString,
             ),
             'GetAsset': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAsset,
-                    request_deserializer=aifs__pb2.GetAssetRequest.FromString,
-                    response_serializer=aifs__pb2.GetAssetResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.GetAssetRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.GetAssetResponse.SerializeToString,
+            ),
+            'DeleteAsset': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteAsset,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.DeleteAssetRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.DeleteAssetResponse.SerializeToString,
+            ),
+            'ListAssets': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListAssets,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.ListAssetsRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.ListAssetsResponse.SerializeToString,
             ),
             'VectorSearch': grpc.unary_unary_rpc_method_handler(
                     servicer.VectorSearch,
-                    request_deserializer=aifs__pb2.VectorSearchRequest.FromString,
-                    response_serializer=aifs__pb2.VectorSearchResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.VectorSearchRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.VectorSearchResponse.SerializeToString,
             ),
             'CreateSnapshot': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateSnapshot,
-                    request_deserializer=aifs__pb2.CreateSnapshotRequest.FromString,
-                    response_serializer=aifs__pb2.CreateSnapshotResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.CreateSnapshotRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.CreateSnapshotResponse.SerializeToString,
             ),
             'GetSnapshot': grpc.unary_unary_rpc_method_handler(
                     servicer.GetSnapshot,
-                    request_deserializer=aifs__pb2.GetSnapshotRequest.FromString,
-                    response_serializer=aifs__pb2.GetSnapshotResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.GetSnapshotRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.GetSnapshotResponse.SerializeToString,
+            ),
+            'SubscribeEvents': grpc.unary_stream_rpc_method_handler(
+                    servicer.SubscribeEvents,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.SubscribeEventsRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.SubscribeEventsResponse.SerializeToString,
+            ),
+            'ListNamespaces': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListNamespaces,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.ListNamespacesRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.ListNamespacesResponse.SerializeToString,
+            ),
+            'GetNamespace': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetNamespace,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.GetNamespaceRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.GetNamespaceResponse.SerializeToString,
+            ),
+            'VerifyAsset': grpc.unary_unary_rpc_method_handler(
+                    servicer.VerifyAsset,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.VerifyAssetRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.VerifyAssetResponse.SerializeToString,
+            ),
+            'VerifySnapshot': grpc.unary_unary_rpc_method_handler(
+                    servicer.VerifySnapshot,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.VerifySnapshotRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.VerifySnapshotResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -156,8 +275,8 @@ class AIFS(object):
             request_iterator,
             target,
             '/aifs.v1.AIFS/PutAsset',
-            aifs__pb2.PutAssetRequest.SerializeToString,
-            aifs__pb2.PutAssetResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.PutAssetRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.PutAssetResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -183,8 +302,62 @@ class AIFS(object):
             request,
             target,
             '/aifs.v1.AIFS/GetAsset',
-            aifs__pb2.GetAssetRequest.SerializeToString,
-            aifs__pb2.GetAssetResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.GetAssetRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.GetAssetResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DeleteAsset(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/DeleteAsset',
+            aifs_dot_proto_dot_aifs__pb2.DeleteAssetRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.DeleteAssetResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListAssets(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/ListAssets',
+            aifs_dot_proto_dot_aifs__pb2.ListAssetsRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.ListAssetsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -210,8 +383,8 @@ class AIFS(object):
             request,
             target,
             '/aifs.v1.AIFS/VectorSearch',
-            aifs__pb2.VectorSearchRequest.SerializeToString,
-            aifs__pb2.VectorSearchResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.VectorSearchRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.VectorSearchResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -237,8 +410,8 @@ class AIFS(object):
             request,
             target,
             '/aifs.v1.AIFS/CreateSnapshot',
-            aifs__pb2.CreateSnapshotRequest.SerializeToString,
-            aifs__pb2.CreateSnapshotResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.CreateSnapshotRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.CreateSnapshotResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -264,8 +437,143 @@ class AIFS(object):
             request,
             target,
             '/aifs.v1.AIFS/GetSnapshot',
-            aifs__pb2.GetSnapshotRequest.SerializeToString,
-            aifs__pb2.GetSnapshotResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.GetSnapshotRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.GetSnapshotResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SubscribeEvents(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/aifs.v1.AIFS/SubscribeEvents',
+            aifs_dot_proto_dot_aifs__pb2.SubscribeEventsRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.SubscribeEventsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListNamespaces(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/ListNamespaces',
+            aifs_dot_proto_dot_aifs__pb2.ListNamespacesRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.ListNamespacesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetNamespace(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/GetNamespace',
+            aifs_dot_proto_dot_aifs__pb2.GetNamespaceRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.GetNamespaceResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def VerifyAsset(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/VerifyAsset',
+            aifs_dot_proto_dot_aifs__pb2.VerifyAssetRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.VerifyAssetResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def VerifySnapshot(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/VerifySnapshot',
+            aifs_dot_proto_dot_aifs__pb2.VerifySnapshotRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.VerifySnapshotResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -289,8 +597,8 @@ class HealthStub(object):
         """
         self.Check = channel.unary_unary(
                 '/aifs.v1.Health/Check',
-                request_serializer=aifs__pb2.HealthCheckRequest.SerializeToString,
-                response_deserializer=aifs__pb2.HealthCheckResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.HealthCheckRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.HealthCheckResponse.FromString,
                 _registered_method=True)
 
 
@@ -309,8 +617,8 @@ def add_HealthServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Check': grpc.unary_unary_rpc_method_handler(
                     servicer.Check,
-                    request_deserializer=aifs__pb2.HealthCheckRequest.FromString,
-                    response_serializer=aifs__pb2.HealthCheckResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.HealthCheckRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.HealthCheckResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -339,8 +647,8 @@ class Health(object):
             request,
             target,
             '/aifs.v1.Health/Check',
-            aifs__pb2.HealthCheckRequest.SerializeToString,
-            aifs__pb2.HealthCheckResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.HealthCheckRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.HealthCheckResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -364,8 +672,8 @@ class IntrospectStub(object):
         """
         self.GetInfo = channel.unary_unary(
                 '/aifs.v1.Introspect/GetInfo',
-                request_serializer=aifs__pb2.IntrospectRequest.SerializeToString,
-                response_deserializer=aifs__pb2.IntrospectResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.IntrospectRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.IntrospectResponse.FromString,
                 _registered_method=True)
 
 
@@ -384,8 +692,8 @@ def add_IntrospectServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GetInfo,
-                    request_deserializer=aifs__pb2.IntrospectRequest.FromString,
-                    response_serializer=aifs__pb2.IntrospectResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.IntrospectRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.IntrospectResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -414,8 +722,8 @@ class Introspect(object):
             request,
             target,
             '/aifs.v1.Introspect/GetInfo',
-            aifs__pb2.IntrospectRequest.SerializeToString,
-            aifs__pb2.IntrospectResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.IntrospectRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.IntrospectResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -439,18 +747,18 @@ class AdminStub(object):
         """
         self.CreateNamespace = channel.unary_unary(
                 '/aifs.v1.Admin/CreateNamespace',
-                request_serializer=aifs__pb2.CreateNamespaceRequest.SerializeToString,
-                response_deserializer=aifs__pb2.CreateNamespaceResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.CreateNamespaceRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.CreateNamespaceResponse.FromString,
                 _registered_method=True)
         self.PruneSnapshot = channel.unary_unary(
                 '/aifs.v1.Admin/PruneSnapshot',
-                request_serializer=aifs__pb2.PruneSnapshotRequest.SerializeToString,
-                response_deserializer=aifs__pb2.PruneSnapshotResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.PruneSnapshotRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.PruneSnapshotResponse.FromString,
                 _registered_method=True)
         self.ManagePolicy = channel.unary_unary(
                 '/aifs.v1.Admin/ManagePolicy',
-                request_serializer=aifs__pb2.ManagePolicyRequest.SerializeToString,
-                response_deserializer=aifs__pb2.ManagePolicyResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.ManagePolicyRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.ManagePolicyResponse.FromString,
                 _registered_method=True)
 
 
@@ -481,18 +789,18 @@ def add_AdminServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreateNamespace': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateNamespace,
-                    request_deserializer=aifs__pb2.CreateNamespaceRequest.FromString,
-                    response_serializer=aifs__pb2.CreateNamespaceResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.CreateNamespaceRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.CreateNamespaceResponse.SerializeToString,
             ),
             'PruneSnapshot': grpc.unary_unary_rpc_method_handler(
                     servicer.PruneSnapshot,
-                    request_deserializer=aifs__pb2.PruneSnapshotRequest.FromString,
-                    response_serializer=aifs__pb2.PruneSnapshotResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.PruneSnapshotRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.PruneSnapshotResponse.SerializeToString,
             ),
             'ManagePolicy': grpc.unary_unary_rpc_method_handler(
                     servicer.ManagePolicy,
-                    request_deserializer=aifs__pb2.ManagePolicyRequest.FromString,
-                    response_serializer=aifs__pb2.ManagePolicyResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.ManagePolicyRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.ManagePolicyResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -521,8 +829,8 @@ class Admin(object):
             request,
             target,
             '/aifs.v1.Admin/CreateNamespace',
-            aifs__pb2.CreateNamespaceRequest.SerializeToString,
-            aifs__pb2.CreateNamespaceResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.CreateNamespaceRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.CreateNamespaceResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -548,8 +856,8 @@ class Admin(object):
             request,
             target,
             '/aifs.v1.Admin/PruneSnapshot',
-            aifs__pb2.PruneSnapshotRequest.SerializeToString,
-            aifs__pb2.PruneSnapshotResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.PruneSnapshotRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.PruneSnapshotResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -575,8 +883,8 @@ class Admin(object):
             request,
             target,
             '/aifs.v1.Admin/ManagePolicy',
-            aifs__pb2.ManagePolicyRequest.SerializeToString,
-            aifs__pb2.ManagePolicyResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.ManagePolicyRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.ManagePolicyResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -600,8 +908,8 @@ class MetricsStub(object):
         """
         self.GetMetrics = channel.unary_unary(
                 '/aifs.v1.Metrics/GetMetrics',
-                request_serializer=aifs__pb2.MetricsRequest.SerializeToString,
-                response_deserializer=aifs__pb2.MetricsResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.MetricsRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.MetricsResponse.FromString,
                 _registered_method=True)
 
 
@@ -620,8 +928,8 @@ def add_MetricsServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetMetrics': grpc.unary_unary_rpc_method_handler(
                     servicer.GetMetrics,
-                    request_deserializer=aifs__pb2.MetricsRequest.FromString,
-                    response_serializer=aifs__pb2.MetricsResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.MetricsRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.MetricsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -650,8 +958,8 @@ class Metrics(object):
             request,
             target,
             '/aifs.v1.Metrics/GetMetrics',
-            aifs__pb2.MetricsRequest.SerializeToString,
-            aifs__pb2.MetricsResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.MetricsRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.MetricsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -675,8 +983,8 @@ class FormatStub(object):
         """
         self.FormatStorage = channel.unary_unary(
                 '/aifs.v1.Format/FormatStorage',
-                request_serializer=aifs__pb2.FormatRequest.SerializeToString,
-                response_deserializer=aifs__pb2.FormatResponse.FromString,
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.FormatRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.FormatResponse.FromString,
                 _registered_method=True)
 
 
@@ -695,8 +1003,8 @@ def add_FormatServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'FormatStorage': grpc.unary_unary_rpc_method_handler(
                     servicer.FormatStorage,
-                    request_deserializer=aifs__pb2.FormatRequest.FromString,
-                    response_serializer=aifs__pb2.FormatResponse.SerializeToString,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.FormatRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.FormatResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -725,8 +1033,8 @@ class Format(object):
             request,
             target,
             '/aifs.v1.Format/FormatStorage',
-            aifs__pb2.FormatRequest.SerializeToString,
-            aifs__pb2.FormatResponse.FromString,
+            aifs_dot_proto_dot_aifs__pb2.FormatRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.FormatResponse.FromString,
             options,
             channel_credentials,
             insecure,

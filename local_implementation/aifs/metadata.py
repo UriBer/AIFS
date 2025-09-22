@@ -120,11 +120,11 @@ class MetadataStore:
         cursor = conn.cursor()
         
         created_at = datetime.utcnow().isoformat()
-        metadata_json = json.dumps(metadata) if metadata else None
+        metadata_str = json.dumps(metadata) if metadata else None
         
         cursor.execute(
             "INSERT OR REPLACE INTO assets (asset_id, kind, size, metadata, created_at) VALUES (?, ?, ?, ?, ?)",
-            (asset_id, kind, size, metadata_json, created_at)
+            (asset_id, kind, size, metadata_str, created_at)
         )
         
         conn.commit()
@@ -150,8 +150,8 @@ class MetadataStore:
         if not row:
             return None
         
-        asset_id, kind, size, metadata_json, created_at = row
-        metadata = json.loads(metadata_json) if metadata_json else {}
+        asset_id, kind, size, metadata_str, created_at = row
+        metadata = json.loads(metadata_str) if metadata_str else {}
         
         return {
             "asset_id": asset_id,
@@ -209,8 +209,8 @@ class MetadataStore:
         
         parents = []
         for row in rows:
-            asset_id, kind, size, metadata_json, created_at, transform_name, transform_digest = row
-            metadata = json.loads(metadata_json) if metadata_json else {}
+            asset_id, kind, size, metadata_str, created_at, transform_name, transform_digest = row
+            metadata = json.loads(metadata_str) if metadata_str else {}
             
             parents.append({
                 "asset_id": asset_id,
@@ -248,8 +248,8 @@ class MetadataStore:
         
         children = []
         for row in rows:
-            asset_id, kind, size, metadata_json, created_at, transform_name, transform_digest = row
-            metadata = json.loads(metadata_json) if metadata_json else {}
+            asset_id, kind, size, metadata_str, created_at, transform_name, transform_digest = row
+            metadata = json.loads(metadata_str) if metadata_str else {}
             
             children.append({
                 "asset_id": asset_id,
@@ -285,7 +285,7 @@ class MetadataStore:
         if created_at is None:
             created_at = datetime.utcnow().isoformat()
         
-        metadata_json = json.dumps(metadata) if metadata else None
+        metadata_str = json.dumps(metadata) if metadata else None
         
         # Generate snapshot ID from merkle root and timestamp
         snapshot_id_input = f"{merkle_root}:{created_at}"
@@ -294,7 +294,7 @@ class MetadataStore:
         cursor.execute(
             "INSERT INTO snapshots (snapshot_id, namespace, merkle_root, metadata, signature, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?)",
-            (snapshot_id, namespace, merkle_root, metadata_json, signature, created_at)
+            (snapshot_id, namespace, merkle_root, metadata_str, signature, created_at)
         )
         
         conn.commit()
@@ -339,8 +339,8 @@ class MetadataStore:
             conn.close()
             return None
         
-        snapshot_id, namespace, merkle_root, metadata_json, signature, created_at = row
-        metadata = json.loads(metadata_json) if metadata_json else {}
+        snapshot_id, namespace, merkle_root, metadata_str, signature, created_at = row
+        metadata = json.loads(metadata_str) if metadata_str else {}
         
         # Get assets in snapshot
         cursor.execute("""
@@ -355,8 +355,8 @@ class MetadataStore:
         
         assets = []
         for row in asset_rows:
-            asset_id, kind, size, metadata_json, asset_created_at = row
-            asset_metadata = json.loads(metadata_json) if metadata_json else {}
+            asset_id, kind, size, metadata_str, asset_created_at = row
+            asset_metadata = json.loads(metadata_str) if metadata_str else {}
             
             assets.append({
                 "asset_id": asset_id,
@@ -390,7 +390,7 @@ class MetadataStore:
         cursor = conn.cursor()
         
         created_at = datetime.utcnow().isoformat()
-        metadata_json = json.dumps(metadata) if metadata else None
+        metadata_str = json.dumps(metadata) if metadata else None
         
         # Use name as ID for simplicity
         namespace_id = name
@@ -398,7 +398,7 @@ class MetadataStore:
         cursor.execute(
             "INSERT OR REPLACE INTO namespaces (namespace_id, name, created_at, metadata) "
             "VALUES (?, ?, ?, ?)",
-            (namespace_id, name, created_at, metadata_json)
+            (namespace_id, name, created_at, metadata_str)
         )
         
         conn.commit()
@@ -426,8 +426,8 @@ class MetadataStore:
         if not row:
             return None
         
-        namespace_id, name, description, metadata_json, created_at = row
-        metadata = json.loads(metadata_json) if metadata_json else {}
+        namespace_id, name, description, metadata_str, created_at = row
+        metadata = json.loads(metadata_str) if metadata_str else {}
         
         return {
             "namespace_id": namespace_id,
@@ -453,8 +453,8 @@ class MetadataStore:
         
         namespaces = []
         for row in rows:
-            namespace_id, name, description, metadata_json, created_at = row
-            metadata = json.loads(metadata_json) if metadata_json else {}
+            namespace_id, name, description, metadata_str, created_at = row
+            metadata = json.loads(metadata_str) if metadata_str else {}
             
             namespaces.append({
                 "namespace_id": namespace_id,
@@ -465,3 +465,41 @@ class MetadataStore:
             })
         
         return namespaces
+    
+    def list_assets(self, limit: int = 100, offset: int = 0) -> List[Dict]:
+        """List assets.
+        
+        Args:
+            limit: Maximum number of assets to return
+            offset: Number of assets to skip
+            
+        Returns:
+            List of asset metadata dictionaries
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT asset_id, kind, size, created_at, metadata
+            FROM assets 
+            ORDER BY created_at DESC 
+            LIMIT ? OFFSET ?
+        """, (limit, offset))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        assets = []
+        for row in rows:
+            asset_id, kind, size, created_at, metadata_str = row
+            metadata = json.loads(metadata_str) if metadata_str else {}
+            
+            assets.append({
+                "asset_id": asset_id,
+                "kind": kind,
+                "size": size,
+                "created_at": created_at,
+                "metadata": metadata
+            })
+        
+        return assets

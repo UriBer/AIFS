@@ -1,13 +1,12 @@
 """AIFS Storage Backend
 
-Implements content-addressed storage using SHA-256 hashing and AES-256-GCM encryption.
-Note: Using SHA-256 instead of BLAKE3 to avoid Rust dependency.
+Implements content-addressed storage using BLAKE3 hashing and AES-256-GCM encryption.
 """
 
 import os
 import pathlib
 import shutil
-import hashlib
+import blake3
 from typing import Dict, List, Optional, Union, BinaryIO
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes
@@ -17,20 +16,24 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 class StorageBackend:
     """Content-addressed storage backend for AIFS.
     
-    Stores assets as files named by their SHA-256 hash in a directory structure.
+    Stores assets as files named by their BLAKE3 hash in a directory structure.
     Implements AES-256-GCM encryption for all chunks.
-    Note: Using SHA-256 instead of BLAKE3 to avoid Rust dependency.
     """
     
-    def __init__(self, root_dir: Union[str, pathlib.Path], encryption_key: Optional[bytes] = None):
+    def __init__(self, root_dir: Union[str, pathlib.Path], encryption_key: Optional[bytes] = None,
+                 kms_key_id: Optional[str] = None):
         """Initialize the storage backend.
         
         Args:
             root_dir: Root directory for storage
             encryption_key: Optional encryption key (generated if None)
+            kms_key_id: Optional KMS key ID for envelope encryption
         """
         self.root_dir = pathlib.Path(root_dir)
         self.root_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Store KMS key ID for envelope encryption
+        self.kms_key_id = kms_key_id or "aifs-default-key"
         
         # Generate encryption key if not provided
         if encryption_key is None:
@@ -61,11 +64,10 @@ class StorageBackend:
             data: Binary data to store
             
         Returns:
-            Hex-encoded SHA-256 hash of the data
+            Hex-encoded BLAKE3 hash of the data
         """
-        # Compute SHA-256 hash (using standard library to avoid Rust dependency)
-        hash_obj = hashlib.sha256(data)
-        hash_hex = hash_obj.hexdigest()
+        # Compute BLAKE3 hash
+        hash_hex = blake3.blake3(data).hexdigest()
         
         # Create path with parent directories
         path = self._hash_to_path(hash_hex)
@@ -76,6 +78,13 @@ class StorageBackend:
             # Encrypt data with AES-256-GCM
             encrypted_data = self._encrypt_chunk(data)
             path.write_bytes(encrypted_data)
+            
+            # Store KMS key ID in metadata file
+            metadata_path = path.with_suffix('.meta')
+            with open(metadata_path, 'w') as f:
+                f.write(f"kms_key_id={self.kms_key_id}\n")
+                f.write(f"encryption=AES-256-GCM\n")
+                f.write(f"hash_algorithm=BLAKE3\n")
         
         return hash_hex
     
@@ -182,7 +191,7 @@ class StorageBackend:
         """Get information about a chunk without decrypting.
         
         Args:
-            hash_hex: Hex-encoded SHA-256 hash
+            hash_hex: Hex-encoded BLAKE3 hash
             
         Returns:
             Dictionary with chunk info or None if not found
@@ -192,8 +201,19 @@ class StorageBackend:
             return None
         
         stat_info = path.stat()
-        return {
+        info = {
             "size": stat_info.st_size,
             "created": stat_info.st_ctime,
             "modified": stat_info.st_mtime
         }
+        
+        # Read metadata file if it exists
+        metadata_path = path.with_suffix('.meta')
+        if metadata_path.exists():
+            with open(metadata_path, 'r') as f:
+                for line in f:
+                    if '=' in line:
+                        key, value = line.strip().split('=', 1)
+                        info[key] = value
+        
+        return info
