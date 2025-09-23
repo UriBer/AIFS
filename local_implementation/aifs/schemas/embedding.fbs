@@ -1,0 +1,61 @@
+// FlatBuffers schema for Embed asset kind
+// Optimized for fixed-layout vectors without varint overhead
+
+namespace aifs.schemas;
+
+// Supported distance metrics for vector similarity
+enum DistanceMetric: uint8 {
+  COSINE = 0,
+  EUCLIDEAN = 1,
+  DOT_PRODUCT = 2,
+  MANHATTAN = 3,
+  HAMMING = 4
+}
+
+// Supported embedding models/frameworks
+enum EmbeddingModel: uint8 {
+  UNKNOWN = 0,
+  OPENAI_ADA_002 = 1,
+  OPENAI_3_SMALL = 2,
+  OPENAI_3_LARGE = 3,
+  SENTENCE_TRANSFORMERS = 4,
+  HUGGINGFACE = 5,
+  CUSTOM = 255
+}
+
+// Vector metadata
+table VectorMetadata {
+  model: EmbeddingModel;
+  dimension: uint32;
+  distance_metric: DistanceMetric;
+  created_at: uint64;
+  model_version: string;
+  framework: string;
+  parameters: string;  // JSON string of model parameters
+}
+
+// Single embedding vector
+table Embedding {
+  vector: [float32];  // The actual embedding vector
+  metadata: VectorMetadata;
+  asset_id: string;   // ID of the source asset
+  chunk_index: uint32; // Index if this is from a chunk
+  confidence: float32; // Confidence score (0.0 to 1.0)
+}
+
+// Collection of embeddings (for multi-modal or batched embeddings)
+table EmbeddingCollection {
+  embeddings: [Embedding];
+  collection_name: string;
+  total_vectors: uint32;
+  collection_metadata: string; // JSON string
+}
+
+// Root table
+table EmbeddingRoot {
+  single: Embedding;
+  collection: EmbeddingCollection;
+  is_collection: bool;
+}
+
+root_type EmbeddingRoot;

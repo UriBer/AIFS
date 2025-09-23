@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package aifs.schemas;
+
+// Artifact schema for ZIP+MANIFEST encoding
+// Represents heterogeneous bundles of related assets
+
+// Individual file entry in the artifact
+message FileEntry {
+  string path = 1;           // Relative path within the artifact
+  string asset_id = 2;       // AIFS asset ID of the file content
+  int64 size = 3;           // File size in bytes
+  string mime_type = 4;     // MIME type of the file
+  int64 created_at = 5;     // Creation timestamp
+  int64 modified_at = 6;    // Last modification timestamp
+  map<string, string> metadata = 7;  // Additional file metadata
+  bool is_executable = 8;   // Whether the file is executable
+  string checksum = 9;      // File checksum (BLAKE3)
+}
+
+// Dependency information
+message Dependency {
+  string name = 1;           // Dependency name
+  string version = 2;        // Version constraint
+  string source = 3;         // Source (e.g., "pip", "npm", "cargo")
+  string asset_id = 4;       // AIFS asset ID if stored in AIFS
+  map<string, string> metadata = 5;
+}
+
+// Artifact manifest
+message ArtifactManifest {
+  string name = 1;                    // Artifact name
+  string version = 2;                 // Artifact version
+  string description = 3;             // Human-readable description
+  string author = 4;                  // Author/creator
+  string license = 5;                 // License identifier
+  repeated string tags = 6;           // Tags for categorization
+  repeated FileEntry files = 7;       // Files in the artifact
+  repeated Dependency dependencies = 8; // Dependencies
+  map<string, string> metadata = 9;   // Additional metadata
+  int64 created_at = 10;             // Creation timestamp
+  int64 modified_at = 11;            // Last modification timestamp
+  string artifact_id = 12;           // Unique artifact identifier
+  string parent_artifact_id = 13;    // Parent artifact (for derived artifacts)
+  repeated string lineage = 14;      // Lineage of source assets
+}
+
+// Artifact bundle (ZIP + MANIFEST)
+message ArtifactBundle {
+  ArtifactManifest manifest = 1;
+  bytes zip_data = 2;                 // The actual ZIP file data
+  string zip_checksum = 3;            // BLAKE3 checksum of ZIP data
+  int64 zip_size = 4;                 // Size of ZIP data
+  string compression_method = 5;      // ZIP compression method used
+  int32 compression_level = 6;        // Compression level (0-9)
+}
+
+// Artifact collection (multiple related artifacts)
+message ArtifactCollection {
+  string collection_name = 1;
+  string description = 2;
+  repeated ArtifactBundle artifacts = 3;
+  map<string, string> collection_metadata = 4;
+  int64 created_at = 5;
+  string curator = 6;
+}

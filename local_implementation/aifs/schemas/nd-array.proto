@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package aifs.schemas;
+
+// NDArray schema for Tensor asset kind
+// Based on Apache Arrow2 format for efficient tensor storage
+message NDArray {
+  // Data type of the tensor elements
+  enum DataType {
+    UNKNOWN = 0;
+    BOOL = 1;
+    INT8 = 2;
+    UINT8 = 3;
+    INT16 = 4;
+    UINT16 = 5;
+    INT32 = 6;
+    UINT32 = 7;
+    INT64 = 8;
+    UINT64 = 9;
+    FLOAT16 = 10;
+    FLOAT32 = 11;
+    FLOAT64 = 12;
+    COMPLEX64 = 13;
+    COMPLEX128 = 14;
+    STRING = 15;
+    BINARY = 16;
+  }
+  
+  // Shape of the tensor (dimensions)
+  message Shape {
+    repeated int64 dimensions = 1;
+  }
+  
+  // Strides for memory layout (optional, for advanced layouts)
+  message Strides {
+    repeated int64 strides = 1;
+  }
+  
+  // Metadata about the tensor
+  message Metadata {
+    string name = 1;
+    string description = 2;
+    map<string, string> attributes = 3;
+    int64 created_at = 4;
+    string creator = 5;
+  }
+  
+  // Main tensor definition
+  DataType dtype = 1;
+  Shape shape = 2;
+  Strides strides = 3;  // Optional, for custom memory layouts
+  bytes data = 4;       // Raw tensor data
+  Metadata metadata = 5;
+  
+  // Arrow2 specific fields
+  string arrow_schema = 6;  // Arrow schema as JSON string
+  int64 offset = 7;         // Offset into the data buffer
+  int64 length = 8;         // Length of valid data
+  bool is_nullable = 9;     // Whether the tensor can contain nulls
+  repeated int64 null_bitmap = 10;  // Null bitmap for nullable tensors
+}
+
+// Collection of NDArrays (for multi-dimensional or batched data)
+message NDArrayCollection {
+  repeated NDArray arrays = 1;
+  string collection_name = 2;
+  map<string, string> collection_metadata = 3;
+}

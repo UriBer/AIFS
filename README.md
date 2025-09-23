@@ -12,6 +12,8 @@ AI-native File System - A next-generation file system designed from the ground u
 ### ✅ Implemented Features
 - **Content Addressing**: BLAKE3-based content addressing
 - **Vector Search**: Semantic similarity search with FAISS
+- **Asset Kinds**: Complete implementation of Blob, Tensor (Arrow2), Embed (FlatBuffers), Artifact (ZIP+MANIFEST)
+- **Strong Causality**: Transaction system ensuring "Asset B SHALL NOT be visible until A is fully committed"
 - **Encryption**: AES-256-GCM with KMS integration
 - **Versioning**: Merkle tree-based snapshots with Ed25519 signatures
 - **gRPC API**: High-performance RPC interface with reflection (dev mode)
@@ -20,16 +22,18 @@ AI-native File System - A next-generation file system designed from the ground u
 - **Compression**: Gzip compression for transport
 - **Error Handling**: Structured error responses with google.rpc.Status
 - **Docker Support**: Production-ready containerization with Docker Compose
+- **Testing**: Comprehensive test suite with 26+ asset kinds tests and 23+ strong causality tests
 
 ### 🚧 In Progress
 - Performance optimization and benchmarking
 - Advanced monitoring and metrics
 
 ### 📋 Planned Features
-- Asset Kinds (Tensor, Embed, Artifact)
 - FUSE layer for POSIX compatibility
 - Pre-signed URLs for direct streaming
 - Ingest operators for automatic embedding generation
+- Strong causality for lineage tracking
+- Advanced performance optimization
 
 ## 🚀 Quick Start
 

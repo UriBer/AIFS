@@ -283,7 +283,24 @@ local_implementation/
 
 ## 🧪 **Testing**
 
-Run the comprehensive test suite:
+### **Asset Kinds Tests** (26 tests)
+Comprehensive test suite for all asset kinds:
+
+```bash
+# Run all asset kinds tests
+python run_asset_kinds_tests.py
+
+# Run specific test categories
+python run_asset_kinds_tests.py --tests blob
+python run_asset_kinds_tests.py --tests tensor
+python run_asset_kinds_tests.py --tests embedding
+python run_asset_kinds_tests.py --tests artifact
+python run_asset_kinds_tests.py --tests integration
+python run_asset_kinds_tests.py --tests edge_cases
+```
+
+### **General Tests**
+Run the complete test suite:
 
 ```bash
 # Run all tests
@@ -293,6 +310,14 @@ python run_tests.py
 python -m pytest tests/test_asset_manager.py
 python -m pytest tests/test_vector_db.py
 ```
+
+### **Test Coverage**
+- ✅ **Blob Assets**: Encoding, validation, edge cases
+- ✅ **Tensor Assets**: Multi-dimensional arrays, all dtypes, metadata
+- ✅ **Embedding Assets**: Vectors, models, distance metrics
+- ✅ **Artifact Assets**: ZIP+MANIFEST, file management
+- ✅ **Integration**: AssetManager CRUD operations
+- ✅ **Edge Cases**: Empty data, large data, Unicode, corruption
 
 ## 🚀 **Quick Start Demo**
 

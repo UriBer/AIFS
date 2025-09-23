@@ -29,6 +29,11 @@ macaroon>=0.1.0  # For capability-based authorization
 # Compression support
 zstandard>=0.22.0  # For zstd compression as required by spec
 
+# Asset kinds dependencies
+pyarrow>=10.0.0  # For Tensor asset kind (Arrow2 encoding)
+flatbuffers>=23.0.0  # For Embed asset kind (FlatBuffers encoding)
+numpy>=1.26.0  # For tensor operations
+
 # Test dependencies
 pytest
 pytest-grpc  # For testing gRPC services
