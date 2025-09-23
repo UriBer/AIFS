@@ -1,12 +1,12 @@
 # Core dependencies
-grpcio==1.54.0
-grpcio-tools==1.54.0
-grpcio-reflection==1.54.0
-grpcio-status==1.54.0
-protobuf==4.22.3
+grpcio>=1.54.3
+grpcio-tools>=1.54.3
+grpcio-reflection>=1.54.3
+grpcio-status>=1.54.3
+protobuf>=4.25.8
 # BLAKE3 for content addressing (as specified in AIFS architecture)
 blake3==0.3.3
-numpy==1.24.3
+numpy>=1.26.0
 
 # FAISS alternatives - try these in order:
 # Option 1: Pre-built wheel (most compatible)
@@ -16,13 +16,13 @@ faiss-cpu>=1.7.4; platform_machine == "x86_64"
 # Option 3: Pure Python alternative (fallback)
 scikit-learn>=1.0.0  # For basic vector operations when FAISS unavailable
 
-sqlite-utils==3.35
-pydantic==2.0.3
+sqlite-utils>=3.35
+pydantic>=2.10.0
 typer>=0.10.0
-rich==13.4.2
+rich>=13.4.2
 
 # Security and encryption dependencies
-cryptography>=45.0.0  # For AES-256-GCM and Ed25519
+cryptography>=46.0.0  # For AES-256-GCM and Ed25519
 pynacl>=1.5.0  # For Ed25519 signatures
 macaroon>=0.1.0  # For capability-based authorization
 

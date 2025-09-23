@@ -1,5 +1,5 @@
 # Dockerfile for AIFS production deployment
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Add comprehensive labels for Docker Hub
 LABEL maintainer="urib@even-derech-it.com"
@@ -18,7 +18,7 @@ LABEL ai.native.file-system.features="content-addressing,vector-search,versioned
 LABEL ai.native.file-system.architecture="microservices,content-addressed-storage,vector-database"
 
 # Install system dependencies including Rust for blake3
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     build-essential \
     cmake \
     git \
@@ -28,6 +28,10 @@ RUN apt-get update && apt-get install -y \
     libopenblas0 \
     libomp5 \
     curl \
+    && apt-get install -y --only-upgrade libexpat1 expat \
+    && apt-get dist-upgrade -y \
+    && apt-get autoremove -y \
+    && apt-get autoclean \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
