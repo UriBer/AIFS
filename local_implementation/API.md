@@ -8,7 +8,18 @@ AIFS provides a high-performance gRPC API for content-addressed storage, vector 
 
 ## Quick Start
 
-### Docker Deployment (Recommended)
+### Docker Hub (Recommended)
+```bash
+# Pull and run the latest version
+docker pull uriber/aifs:latest
+docker run -p 50051:50051 -v aifs-data:/data/aifs uriber/aifs:latest
+
+# Test the API
+grpcurl -plaintext localhost:50051 list
+grpcurl -plaintext localhost:50051 grpc.health.v1.Health/Check
+```
+
+### Local Docker Build
 ```bash
 # Start with Docker Compose
 docker-compose up -d

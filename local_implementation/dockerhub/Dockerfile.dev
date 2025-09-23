@@ -1,0 +1,7 @@
+FROM uriber/aifs:latest
+
+# Enable gRPC reflection by default
+ENV AIFS_DEV_MODE=true
+
+# Override the default command to enable dev mode
+CMD ["python", "start_server.py", "--dev", "--storage-dir", "/data/aifs", "--port", "50051"]

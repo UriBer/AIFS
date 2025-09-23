@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 DOCKERHUB_USERNAME="uriber"
 IMAGE_NAME="aifs"
 VERSION=${1:-"latest"}
-PLATFORMS="linux/amd64,linux/arm64"
+PLATFORMS="linux/arm64"  # Default to current platform
 
 # Functions
 log_info() {
@@ -46,12 +46,13 @@ check_docker() {
 
 # Check if logged into Docker Hub
 check_dockerhub_login() {
-    if ! docker info | grep -q "Username: $DOCKERHUB_USERNAME"; then
-        log_warning "Not logged into Docker Hub as $DOCKERHUB_USERNAME"
+    # Check if we can access Docker Hub by trying to pull a test image
+    if ! docker pull hello-world >/dev/null 2>&1; then
+        log_warning "Not logged into Docker Hub or Docker Hub is not accessible"
         log_info "Please run: docker login"
         read -p "Press Enter after logging in..."
     else
-        log_success "Logged into Docker Hub as $DOCKERHUB_USERNAME"
+        log_success "Docker Hub access confirmed"
     fi
 }
 
@@ -76,7 +77,7 @@ build_and_push() {
         --push \
         $dockerfile_arg \
         $build_args \
-        .; then
+        ..; then
         log_success "Successfully built and pushed $DOCKERHUB_USERNAME/$IMAGE_NAME:$tag"
     else
         log_error "Failed to build and push $DOCKERHUB_USERNAME/$IMAGE_NAME:$tag"

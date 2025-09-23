@@ -1,7 +1,7 @@
 # Dockerfile for AIFS production deployment
 FROM python:3.11-slim
 
-# Install system dependencies
+# Install system dependencies including Rust for blake3
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -11,8 +11,13 @@ RUN apt-get update && apt-get install -y \
     libomp-dev \
     libopenblas0 \
     libomp5 \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
+
+# Install Rust for blake3 compilation
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Create non-root user for security
 RUN groupadd -r aifs && useradd -r -g aifs aifs

@@ -33,7 +33,21 @@ AI-native File System - A next-generation file system designed from the ground u
 
 ## 🚀 Quick Start
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker Hub (Recommended)
+```bash
+# Pull and run the latest version from Docker Hub
+docker pull uriber/aifs:latest
+docker run -p 50051:50051 -v aifs-data:/data/aifs uriber/aifs:latest
+
+# Or use a specific version
+docker pull uriber/aifs:v0.1.0-alpha
+docker run -p 50051:50051 -v aifs-data:/data/aifs uriber/aifs:v0.1.0-alpha
+
+# Test the API
+grpcurl -plaintext localhost:50051 grpc.health.v1.Health/Check
+```
+
+### Option 2: Local Docker Build
 ```bash
 cd local_implementation
 
@@ -45,7 +59,7 @@ docker-compose up -d
 docker run -p 50051:50051 -v aifs-data:/data/aifs aifs:latest
 ```
 
-### Option 2: Automated Installation
+### Option 3: Automated Installation
 ```bash
 cd local_implementation
 python install.py

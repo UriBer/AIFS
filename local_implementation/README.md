@@ -47,7 +47,21 @@ The local implementation follows a simplified version of the architecture descri
 
 ## Getting Started
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker Hub (Recommended)
+```bash
+# Pull and run the latest version from Docker Hub
+docker pull uriber/aifs:latest
+docker run -p 50051:50051 -v aifs-data:/data/aifs uriber/aifs:latest
+
+# Or use a specific version
+docker pull uriber/aifs:v0.1.0-alpha
+docker run -p 50051:50051 -v aifs-data:/data/aifs uriber/aifs:v0.1.0-alpha
+
+# Test the API
+grpcurl -plaintext localhost:50051 grpc.health.v1.Health/Check
+```
+
+### Option 2: Local Docker Build
 
 ```bash
 # Build and run with Docker Compose
@@ -61,7 +75,7 @@ docker run -p 50051:50051 -v aifs-data:/data/aifs aifs:latest
 docker run -p 50051:50051 -v aifs-data:/data/aifs aifs:latest python start_server.py --dev
 ```
 
-### Option 2: Local Development
+### Option 3: Local Development
 
 #### Prerequisites
 
