@@ -3,8 +3,34 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/uriber/aifs)](https://hub.docker.com/r/uriber/aifs)
 [![Docker Image Size](https://img.shields.io/docker/image-size/uriber/aifs)](https://hub.docker.com/r/uriber/aifs)
 [![Docker Stars](https://img.shields.io/docker/stars/uriber/aifs)](https://hub.docker.com/r/uriber/aifs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A production-ready AI-Native File System with content addressing, vector search, and versioned snapshots. Perfect for AI/ML workloads requiring semantic search and data lineage tracking.
+## 🤖 **AI-Native File System for Modern ML Workloads**
+
+AIFS is a production-ready file system designed specifically for AI/ML workloads. It provides content-addressed storage, vector search, and versioned snapshots - everything you need for modern machine learning data management.
+
+### 🎯 **Perfect For:**
+- **ML Engineers** building RAG systems and data pipelines
+- **Data Scientists** managing large datasets and model artifacts  
+- **AI Researchers** tracking data lineage and experiment reproducibility
+- **DevOps Teams** deploying scalable AI infrastructure
+- **Startups** building AI-first applications
+
+### ✨ **Key Features:**
+- 🔗 **Content Addressing** - BLAKE3-based deduplication and integrity
+- 🔍 **Vector Search** - Semantic similarity search with FAISS
+- 🌳 **Versioned Snapshots** - Merkle tree-based data versioning
+- 🔐 **Enterprise Security** - AES-256-GCM encryption + Ed25519 signatures
+- 🌐 **gRPC API** - High-performance RPC with reflection support
+- 📊 **Data Lineage** - Complete tracking of transformations and dependencies
+
+### 🚀 **Use Cases:**
+- **RAG Systems** - Build retrieval-augmented generation pipelines with semantic search
+- **Model Management** - Version and track ML models, datasets, and artifacts
+- **Data Versioning** - Maintain complete data provenance and reproducibility
+- **Content Deduplication** - Eliminate redundant storage across projects
+- **Semantic Search** - Find content by meaning, not just keywords
+- **Research Reproducibility** - Track every transformation and dependency
 
 ## 🚀 Quick Start
 

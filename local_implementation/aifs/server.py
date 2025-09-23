@@ -818,8 +818,8 @@ class AIFSServicer(aifs_pb2_grpc.AIFSServicer):
                 )
             
             # Compute hash of stored data
-            import hashlib
-            computed_hash = hashlib.sha256(asset["data"]).hexdigest()
+            import blake3
+            computed_hash = blake3.blake3(asset["data"]).hexdigest()
             stored_hash = request.asset_id  # Asset ID is the hash
             
             # Compare hashes

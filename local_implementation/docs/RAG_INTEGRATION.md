@@ -290,6 +290,8 @@ class RAGResponse(BaseModel):
 
 #### 5.1 Main RAG Service
 ```python
+import blake3
+
 class RAGService:
     def __init__(self, aifs_client: AIFSClient, openai_api_key: str):
         self.aifs_client = aifs_client
@@ -328,7 +330,7 @@ class RAGService:
                     parents=[{
                         "asset_id": asset.id,
                         "transform_name": "text_chunking",
-                        "transform_digest": hashlib.sha256(chunk.content.encode()).hexdigest()
+                        "transform_digest": blake3.blake3(chunk.content.encode()).hexdigest()
                     }]
                 )
                 stored_chunks.append(chunk_asset)

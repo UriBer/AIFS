@@ -118,46 +118,54 @@ python -m aifs.fuse /aifs
 
 ## 🎯 **CLI Usage**
 
-The AIFS CLI provides a comprehensive interface for all operations:
+The AIFS CLI provides a comprehensive interface for all operations. After installing with `pip install -e .`, you can use the `aifs` command directly:
 
 ### Basic Asset Operations
 
 ```bash
 # Store an asset
-python aifs_cli.py put <file> [--kind blob] [--description "Description"]
+aifs put <file> [--kind blob] [--description "Description"]
 
 # Store an asset with automatic embedding for vector search
-python aifs_cli.py put <file> --with-embedding --description "Description"
+aifs put <file> --with-embedding --description "Description"
 
 # Store an asset with embedding (dedicated command)
-python aifs_cli.py put-with-embedding <file> --description "Description"
+aifs put-with-embedding <file> --description "Description"
 
 # Retrieve an asset
-python aifs_cli.py get <asset_id> [--output-file <path>] [--metadata-only]
+aifs get <asset_id> [--output-file <path>] [--metadata-only]
 
-# List assets (if implemented)
-python aifs_cli.py list
+# Start the server
+aifs server [--host localhost] [--port 50051] [--storage-dir ./aifs_data]
+```
+
+### Alternative: Direct Python Usage
+
+```bash
+# You can still use the Python script directly
+python aifs_cli.py put <file> [--kind blob] [--description "Description"]
+python aifs_cli.py get <asset_id> [--output-file <path>] [--metadata-only]
 ```
 
 ### 🔍 **Vector Search Operations**
 
 ```bash
 # Search for similar assets using a query file
-python aifs_cli.py search <query_file> [--k 5] [--threshold 0.0]
+aifs search <query_file> [--k 5] [--threshold 0.0]
 
 # Examples:
-python aifs_cli.py search documents/python_tutorial.txt
-python aifs_cli.py search queries/ml_query.txt --k 10 --threshold 1.5
+aifs search documents/python_tutorial.txt
+aifs search queries/ml_query.txt --k 10 --threshold 1.5
 ```
 
 ### Snapshot Operations
 
 ```bash
 # Create a snapshot
-python aifs_cli.py snapshot <asset_id1> <asset_id2> [--namespace default] [--description "Description"]
+aifs snapshot <asset_id1> <asset_id2> [--namespace default] [--description "Description"]
 
 # Retrieve snapshot information
-python aifs_cli.py get-snapshot <snapshot_id>
+aifs get-snapshot <snapshot_id>
 ```
 
 ### Server Management

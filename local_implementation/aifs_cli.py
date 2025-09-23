@@ -376,6 +376,7 @@ def start_server(
     host: str = typer.Option("localhost", help="Server host"),
     port: int = typer.Option(50051, help="Server port"),
     storage_dir: Path = typer.Option("./aifs_data", help="Storage directory"),
+    dev: bool = typer.Option(False, help="Enable development mode (gRPC reflection)"),
 ):
     """Start AIFS server."""
     from aifs.server import serve
@@ -384,12 +385,15 @@ def start_server(
     storage_dir = Path(storage_dir).absolute()
     storage_dir.mkdir(parents=True, exist_ok=True)
     
-    console.print(f"Starting AIFS server on {host}:{port}")
+    mode = "development" if dev else "production"
+    console.print(f"Starting AIFS server on {host}:{port} ({mode} mode)")
     console.print(f"Storage directory: {storage_dir}")
+    if dev:
+        console.print("🔍 Development mode: gRPC reflection enabled")
     console.print("Press Ctrl+C to stop")
     
     # Start server
-    serve(host, port, storage_dir)
+    serve(str(storage_dir), port, 10, dev)
 
 
 @app.command("mount")

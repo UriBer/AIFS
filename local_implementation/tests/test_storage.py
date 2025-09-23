@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for AIFS Storage Backend with SHA-256 and encryption."""
+"""Tests for AIFS Storage Backend with BLAKE3 and encryption."""
 
 import unittest
 import tempfile
@@ -37,7 +37,7 @@ class TestStorageBackend(unittest.TestCase):
         # Store data
         asset_id = self.storage.put(test_data)
         self.assertIsInstance(asset_id, str)
-        self.assertEqual(len(asset_id), 64)  # SHA-256 hash is 64 hex chars
+        self.assertEqual(len(asset_id), 64)  # BLAKE3 hash is 64 hex chars
         
         # Check if data exists
         self.assertTrue(self.storage.exists(asset_id))

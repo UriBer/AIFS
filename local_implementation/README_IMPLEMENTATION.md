@@ -84,7 +84,7 @@ The implementation follows the layered architecture specified in the AIFS RFC:
 - **AES-256-GCM Encryption**: All data chunks are encrypted at rest
 - **Ed25519 Signatures**: Cryptographic verification of snapshots
 - **Macaroon Authorization**: Capability-based access control
-- **Content Addressing**: SHA-256-based deduplication
+- **Content Addressing**: BLAKE3-based deduplication
 
 ### 🌳 Merkle Trees & Snapshots
 - **Proper Merkle Trees**: Binary tree structure for efficient verification
@@ -299,7 +299,7 @@ serve(
 ## 🚧 Limitations & Future Work
 
 ### Current Limitations
-- **Hash Algorithm**: Uses SHA-256 instead of BLAKE3 (Rust dependency)
+- **Hash Algorithm**: Uses BLAKE3 for content addressing (Rust dependency included)
 - **Vector Search**: Falls back to scikit-learn if FAISS unavailable
 - **Performance**: Local implementation, not production-optimized
 - **Scalability**: Single-node implementation
@@ -334,7 +334,7 @@ error: command 'swig' failed: No such file or directory
 ```
 error: Cargo, the Rust package manager, is not installed
 ```
-**Solution**: Install Rust or use the SHA-256 implementation (current default)
+**Solution**: BLAKE3 is now included with Rust dependency in Docker images
 
 #### Permission Errors
 ```

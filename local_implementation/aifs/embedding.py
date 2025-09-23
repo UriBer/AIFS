@@ -44,7 +44,8 @@ class SimpleTextEmbedder:
         for i in range(0, self.dimension, 64):  # Process in 64-byte chunks
             # Create different hash variants
             hash_input = text_bytes + str(i).encode('utf-8')
-            hash_value = hashlib.sha256(hash_input).digest()
+            import blake3
+            hash_value = blake3.blake3(hash_input).digest()
             
             # Convert hash bytes to float values
             for j, byte_val in enumerate(hash_value):

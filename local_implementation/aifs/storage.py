@@ -49,7 +49,7 @@ class StorageBackend:
         """Convert hash to path with sharding.
         
         Args:
-            hash_hex: Hex-encoded SHA-256 hash
+            hash_hex: Hex-encoded BLAKE3 hash
             
         Returns:
             Path to the chunk file
@@ -144,7 +144,7 @@ class StorageBackend:
         """Retrieve data by its content hash.
         
         Args:
-            hash_hex: Hex-encoded SHA-256 hash
+            hash_hex: Hex-encoded BLAKE3 hash
             
         Returns:
             Binary data or None if not found
@@ -159,7 +159,7 @@ class StorageBackend:
         """Check if data with given hash exists.
         
         Args:
-            hash_hex: Hex-encoded SHA-256 hash
+            hash_hex: Hex-encoded BLAKE3 hash
             
         Returns:
             True if data exists, False otherwise
@@ -170,7 +170,7 @@ class StorageBackend:
         """Delete data with given hash.
         
         Args:
-            hash_hex: Hex-encoded SHA-256 hash
+            hash_hex: Hex-encoded BLAKE3 hash
             
         Returns:
             True if data was deleted, False if not found

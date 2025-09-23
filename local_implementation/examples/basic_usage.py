@@ -52,7 +52,7 @@ def main():
         parents = [{
             "asset_id": text_asset_id,
             "transform_name": "text_processor",
-            "transform_digest": "sha256:1234567890abcdef"
+            "transform_digest": "blake3:1234567890abcdef"
         }]
         derived_asset_id = client.put_asset(
             derived_data,

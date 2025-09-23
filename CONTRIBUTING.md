@@ -103,7 +103,7 @@ Use clear, descriptive commit messages:
 ```
 Add BLAKE3 hashing support for content addressing
 
-- Replace SHA-256 with BLAKE3 in storage backend
+- BLAKE3 is now implemented in storage backend
 - Update tests to verify BLAKE3 hash generation
 - Add BLAKE3 dependency to requirements.txt
 ```

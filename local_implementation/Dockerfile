@@ -1,6 +1,22 @@
 # Dockerfile for AIFS production deployment
 FROM python:3.11-slim
 
+# Add comprehensive labels for Docker Hub
+LABEL maintainer="urib@even-derech-it.com"
+LABEL org.opencontainers.image.title="AIFS - AI-Native File System"
+LABEL org.opencontainers.image.description="A production-ready AI-Native File System with content addressing, vector search, and versioned snapshots. Perfect for AI/ML workloads requiring semantic search and data lineage tracking."
+LABEL org.opencontainers.image.url="https://github.com/UriBer/aifs"
+LABEL org.opencontainers.image.source="https://github.com/UriBer/aifs"
+LABEL org.opencontainers.image.vendor="AIFS Team"
+LABEL org.opencontainers.image.version="0.1.0-alpha"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.documentation="https://github.com/UriBer/aifs/blob/main/local_implementation/dockerhub/README.md"
+LABEL org.opencontainers.image.keywords="ai,ml,machine-learning,file-system,content-addressing,vector-search,semantic-search,grpc,blake3,merkle-tree,versioning,data-lineage"
+LABEL org.opencontainers.image.categories="ai,ml,storage,database,search,development"
+LABEL ai.native.file-system.version="0.1.0-alpha"
+LABEL ai.native.file-system.features="content-addressing,vector-search,versioned-snapshots,merkle-trees,grpc-api,blake3-hashing"
+LABEL ai.native.file-system.architecture="microservices,content-addressed-storage,vector-database"
+
 # Install system dependencies including Rust for blake3
 RUN apt-get update && apt-get install -y \
     build-essential \

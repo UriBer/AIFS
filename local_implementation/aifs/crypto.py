@@ -116,7 +116,7 @@ class CryptoManager:
         """Sign an asset ID with metadata.
         
         Args:
-            asset_id: Asset ID (SHA-256 hash)
+            asset_id: Asset ID (BLAKE3 hash)
             metadata: Metadata string
             
         Returns:
@@ -160,7 +160,7 @@ class CryptoManager:
         
         Args:
             signature: Signature bytes
-            asset_id: Asset ID (SHA-256 hash)
+            asset_id: Asset ID (BLAKE3 hash)
             metadata: Metadata string
             public_key: Public key for verification
             

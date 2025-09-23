@@ -13,7 +13,7 @@
 - **gRPC API**: Complete gRPC service implementation with built-in services
 
 ### 🔧 Core Components Implemented
-- **StorageBackend**: Content-addressed, encrypted storage with SHA-256 hashing
+- **StorageBackend**: Content-addressed, encrypted storage with BLAKE3 hashing
 - **AssetManager**: Central asset management with lineage tracking
 - **MerkleTree**: Binary Merkle tree for snapshot integrity verification
 - **CryptoManager**: Ed25519 digital signatures and verification
@@ -39,7 +39,7 @@
 - **AES-256-GCM Encryption**: Military-grade encryption for all data at rest
 - **Ed25519 Signatures**: Fast, secure digital signatures for snapshots
 - **Merkle Proofs**: Cryptographic verification of asset inclusion
-- **Content Addressing**: SHA-256-based deduplication and integrity
+- **Content Addressing**: BLAKE3-based deduplication and integrity
 - **Namespace Isolation**: Multi-tenant security and access control
 
 ### 📊 Performance Features
@@ -50,7 +50,7 @@
 - **Vector Search**: High-performance similarity search (FAISS) with fallback
 
 ### 🚧 Technical Decisions & Trade-offs
-- **Hash Algorithm**: SHA-256 instead of BLAKE3 (avoided Rust dependency)
+- **Hash Algorithm**: BLAKE3 for content addressing (Rust dependency included)
 - **Vector Backend**: FAISS preferred, scikit-learn fallback for compatibility
 - **Database**: SQLite for metadata (ACID compliance, simplicity)
 - **Encryption**: AES-256-GCM for authenticated encryption
@@ -94,7 +94,7 @@
 ### 📈 Metrics & Statistics
 - **Test Coverage**: 90+ tests passing
 - **Components**: 8 core services implemented
-- **Security**: 3 cryptographic primitives (AES, Ed25519, SHA-256)
+- **Security**: 3 cryptographic primitives (AES, Ed25519, BLAKE3)
 - **Performance**: zstd compression, vector search, content deduplication
 - **Compatibility**: Python 3.13, multiple vector backends, cross-platform
 

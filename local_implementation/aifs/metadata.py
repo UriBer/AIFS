@@ -289,7 +289,8 @@ class MetadataStore:
         
         # Generate snapshot ID from merkle root and timestamp
         snapshot_id_input = f"{merkle_root}:{created_at}"
-        snapshot_id = hashlib.sha256(snapshot_id_input.encode()).hexdigest()[:32]  # 128-bit equivalent
+        import blake3
+        snapshot_id = blake3.blake3(snapshot_id_input.encode()).hexdigest()[:32]  # 128-bit equivalent
         
         cursor.execute(
             "INSERT INTO snapshots (snapshot_id, namespace, merkle_root, metadata, signature, created_at) "

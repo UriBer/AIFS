@@ -127,7 +127,7 @@ class VectorDB:
         """Add embedding for an asset.
         
         Args:
-            asset_id: Asset ID (SHA-256 hash)
+            asset_id: Asset ID (BLAKE3 hash)
             embedding: Embedding vector as numpy array
         """
         # Ensure embedding is the right shape

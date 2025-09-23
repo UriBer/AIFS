@@ -249,7 +249,7 @@ def main():
     print("2. Start server: python start_server.py")
     print("3. Use CLI: python aifs_cli.py --help")
     
-    print("\nNote: This implementation uses SHA-256 instead of BLAKE3 to avoid Rust dependencies.")
+    print("\nNote: This implementation uses BLAKE3 for content addressing with Rust dependency included.")
     print("Note: Macaroon authorization is temporarily disabled due to Python 3.13 compatibility.")
     
     # Check what vector backend is available

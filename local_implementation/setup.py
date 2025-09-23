@@ -31,13 +31,15 @@ setup(
         "grpcio",
         "protobuf",
         "grpcio-tools",
-        # Removed blake3 to avoid Rust dependency
+        "grpcio-status",
+        "blake3",
         "numpy",
         "faiss-cpu",
         "sqlite-utils",
         "pydantic",
         "typer",
         "rich",
+        "cryptography",
     ],
     extras_require={
         "fuse": ["fusepy"],

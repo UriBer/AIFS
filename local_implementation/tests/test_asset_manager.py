@@ -45,7 +45,7 @@ class TestAssetManager(unittest.TestCase):
         )
         
         self.assertIsInstance(asset_id, str)
-        self.assertEqual(len(asset_id), 64)  # SHA-256 hash
+        self.assertEqual(len(asset_id), 64)  # BLAKE3 hash
         
         # Retrieve asset
         asset = self.asset_manager.get_asset(asset_id)
