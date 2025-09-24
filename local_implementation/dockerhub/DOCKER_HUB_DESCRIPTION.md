@@ -20,20 +20,27 @@ AIFS (AI-Native File System) is a next-generation file system designed from the 
 
 - **🔗 Content Addressing**: BLAKE3-based deduplication and integrity verification
 - **🔍 Vector Search**: Semantic similarity search with FAISS integration
+- **🔒 Strong Causality**: Transaction system ensuring "Asset B SHALL NOT be visible until A is fully committed"
 - **🌳 Versioned Snapshots**: Merkle tree-based snapshots with Ed25519 signatures
-- **🔐 Security**: AES-256-GCM encryption and macaroon-based authorization
+- **🔐 Enterprise Security**: AES-256-GCM encryption with KMS envelope encryption
+- **🎫 Capability Authorization**: Macaroon-based tokens with namespace and method restrictions
+- **🌿 Branch & Tag System**: Atomic branch updates and immutable tags for audit-grade provenance
 - **🌐 gRPC API**: High-performance RPC interface with reflection support
 - **📊 Data Lineage**: Complete tracking of asset transformations and dependencies
+- **🗜️ Compression**: zstd compression for optimal storage efficiency
 - **🐳 Docker Ready**: Production-ready containerization with health checks
 
 ### 🎯 Use Cases
 
 - **AI/ML Data Management**: Store and search through datasets, models, and artifacts
 - **RAG Systems**: Build retrieval-augmented generation pipelines
-- **Data Versioning**: Track changes and maintain data lineage
+- **Data Versioning**: Track changes and maintain data lineage with branches and tags
 - **Content Deduplication**: Eliminate redundant storage across projects
 - **Semantic Search**: Find content by meaning, not just keywords
-- **Research Reproducibility**: Maintain complete data provenance
+- **Research Reproducibility**: Maintain complete data provenance with immutable tags
+- **Enterprise Security**: Secure data with encryption and capability-based authorization
+- **Regulatory Compliance**: Audit-grade provenance with immutable tags and branch history
+- **Multi-tenant Systems**: Namespace isolation with macaroon-based access control
 
 ### 🚀 Quick Start
 

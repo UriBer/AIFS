@@ -20,12 +20,17 @@ from grpc_reflection.v1alpha import reflection
 # python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. aifs/proto/aifs.proto
 from .proto import aifs_pb2, aifs_pb2_grpc
 from .asset import AssetManager
-from .auth import AuthorizationManager, verify_simple_token
+from .auth import AuthorizationManager, verify_aifs_token, verify_simple_token
 from .errors import AIFSError, NotFoundError, InvalidArgumentError, handle_exception
 
 
-def require_auth(permissions: Set[str]):
-    """Decorator to require authorization for gRPC methods."""
+def require_auth(permissions: Set[str], namespace: Optional[str] = None):
+    """Decorator to require authorization for gRPC methods using AIFS macaroons.
+    
+    Args:
+        permissions: Set of required permissions
+        namespace: Optional namespace restriction
+    """
     def decorator(func):
         @wraps(func)
         def wrapper(self, request, context):
@@ -41,10 +46,12 @@ def require_auth(permissions: Set[str]):
             if auth_token.startswith('Bearer '):
                 auth_token = auth_token[7:]
             
-            # Verify token
-            if not verify_simple_token(auth_token, permissions):
-                context.abort(grpc.StatusCode.PERMISSION_DENIED, "Insufficient permissions")
-                return
+            # Try AIFS token verification first (macaroon-based)
+            if not verify_aifs_token(auth_token, permissions, namespace):
+                # Fallback to simple token verification for backward compatibility
+                if not verify_simple_token(auth_token, permissions):
+                    context.abort(grpc.StatusCode.PERMISSION_DENIED, "Insufficient permissions")
+                    return
             
             return func(self, request, context)
         return wrapper
@@ -108,10 +115,10 @@ class AdminServicer(aifs_pb2_grpc.AdminServicer):
             PruneSnapshotResponse with success status
         """
         try:
-            # Get snapshot to check if it exists
-            snapshot = self.asset_manager.get_snapshot(request.snapshot_id)
+            # Get verified snapshot to ensure signature is valid before pruning
+            snapshot = self.asset_manager.get_verified_snapshot(request.snapshot_id)
             if not snapshot:
-                context.abort(grpc.StatusCode.NOT_FOUND, f"Snapshot {request.snapshot_id} not found")
+                context.abort(grpc.StatusCode.NOT_FOUND, f"Snapshot {request.snapshot_id} not found or signature invalid")
                 return
             
             # For now, just mark as pruned in metadata
@@ -298,10 +305,12 @@ class FormatServicer(aifs_pb2_grpc.FormatServicer):
                 )
                 log_messages.append("Created empty root snapshot")
             
-            # Verify the snapshot
-            snapshot = self.asset_manager.get_snapshot(root_snapshot_id)
+            # Verify the snapshot signature
+            snapshot = self.asset_manager.get_verified_snapshot(root_snapshot_id)
             if snapshot:
-                log_messages.append(f"Snapshot verification: {snapshot['merkle_root']}")
+                log_messages.append(f"Snapshot verification: {snapshot['merkle_root']} (signature valid)")
+            else:
+                log_messages.append("Warning: Root snapshot signature verification failed")
             
             log_messages.append("Storage formatting completed successfully")
             
@@ -408,7 +417,7 @@ class AIFSServicer(aifs_pb2_grpc.AIFSServicer):
             GetAssetResponse with asset metadata and optionally data
         """
         # Get asset
-        asset = self.asset_manager.get_asset(request.asset_id)
+        asset = self.asset_manager.get_asset_with_causality(request.asset_id)
         if not asset:
             error = NotFoundError("Asset", request.asset_id)
             handle_exception(context, "GetAsset", error)
@@ -674,8 +683,11 @@ class AIFSServicer(aifs_pb2_grpc.AIFSServicer):
             metadata=dict(request.metadata)
         )
         
-        # Get snapshot to get merkle root
-        snapshot = self.asset_manager.get_snapshot(snapshot_id)
+        # Get verified snapshot to ensure it was properly signed
+        snapshot = self.asset_manager.get_verified_snapshot(snapshot_id)
+        if not snapshot:
+            context.abort(grpc.StatusCode.INTERNAL, "Failed to create verified snapshot")
+            return
         
         # Create response
         return aifs_pb2.CreateSnapshotResponse(
@@ -694,10 +706,10 @@ class AIFSServicer(aifs_pb2_grpc.AIFSServicer):
         Returns:
             GetSnapshotResponse with snapshot metadata
         """
-        # Get snapshot
-        snapshot = self.asset_manager.get_snapshot(request.snapshot_id)
+        # Get verified snapshot (only returns if signature is valid)
+        snapshot = self.asset_manager.get_verified_snapshot(request.snapshot_id)
         if not snapshot:
-            context.abort(grpc.StatusCode.NOT_FOUND, f"Snapshot {request.snapshot_id} not found")
+            context.abort(grpc.StatusCode.NOT_FOUND, f"Snapshot {request.snapshot_id} not found or signature invalid")
         
         # Create response
         response = aifs_pb2.GetSnapshotResponse(
@@ -808,7 +820,7 @@ class AIFSServicer(aifs_pb2_grpc.AIFSServicer):
         """
         try:
             # Get asset data
-            asset = self.asset_manager.get_asset(request.asset_id)
+            asset = self.asset_manager.get_asset_with_causality(request.asset_id)
             if not asset:
                 return aifs_pb2.VerifyAssetResponse(
                     valid=False,
@@ -854,51 +866,373 @@ class AIFSServicer(aifs_pb2_grpc.AIFSServicer):
             VerifySnapshotResponse with verification results
         """
         try:
-            # Get snapshot
-            snapshot = self.asset_manager.get_snapshot(request.snapshot_id)
+            # Get verified snapshot (only returns if signature is valid)
+            snapshot = self.asset_manager.get_verified_snapshot(request.snapshot_id)
             if not snapshot:
-                return aifs_pb2.VerifySnapshotResponse(
-                    valid=False,
-                    message=f"Snapshot {request.snapshot_id} not found",
-                    merkle_root="",
-                    signature_valid=False
-                )
+                # Try to get unverified snapshot to provide more details
+                unverified_snapshot = self.asset_manager.get_snapshot(request.snapshot_id)
+                if not unverified_snapshot:
+                    return aifs_pb2.VerifySnapshotResponse(
+                        valid=False,
+                        message=f"Snapshot {request.snapshot_id} not found",
+                        merkle_root="",
+                        signature_valid=False
+                    )
+                else:
+                    return aifs_pb2.VerifySnapshotResponse(
+                        valid=False,
+                        message="Snapshot signature verification failed",
+                        merkle_root=unverified_snapshot.get("merkle_root", ""),
+                        signature_valid=False
+                    )
             
-            # Verify signature if public key provided
-            signature_valid = False
-            if request.public_key:
-                signature_valid = self.asset_manager.verify_snapshot(
-                    request.snapshot_id, 
-                    request.public_key
-                )
-            else:
-                # Use default public key
-                signature_valid = self.asset_manager.verify_snapshot(request.snapshot_id)
-            
-            # Get merkle root
+            # If we get here, the snapshot is verified
             merkle_root = snapshot.get("merkle_root", "")
             
-            if signature_valid:
-                return aifs_pb2.VerifySnapshotResponse(
-                    valid=True,
-                    message="Snapshot integrity and signature verified",
-                    merkle_root=merkle_root,
-                    signature_valid=True
-                )
-            else:
-                return aifs_pb2.VerifySnapshotResponse(
-                    valid=False,
-                    message="Snapshot signature verification failed",
-                    merkle_root=merkle_root,
-                    signature_valid=False
-                )
+            return aifs_pb2.VerifySnapshotResponse(
+                valid=True,
+                message="Snapshot integrity and signature verified",
+                merkle_root=merkle_root,
+                signature_valid=True
+            )
         except Exception as e:
             logging.error(f"Error verifying snapshot: {e}")
             context.abort(grpc.StatusCode.INTERNAL, f"Failed to verify snapshot: {str(e)}")
             return
+    
+    # ============================================================================
+    # Branch Management Methods
+    # ============================================================================
+    
+    @require_auth({"snapshot"})
+    def CreateBranch(self, request: aifs_pb2.CreateBranchRequest, context) -> aifs_pb2.CreateBranchResponse:
+        """Create or update a branch with atomic transaction.
+        
+        Args:
+            request: CreateBranchRequest message
+            context: gRPC context
+            
+        Returns:
+            CreateBranchResponse with operation result
+        """
+        try:
+            # Convert metadata
+            metadata = dict(request.metadata) if request.metadata else None
+            
+            # Create branch
+            success = self.asset_manager.create_branch(
+                request.branch_name,
+                request.namespace,
+                request.snapshot_id,
+                metadata
+            )
+            
+            if success:
+                return aifs_pb2.CreateBranchResponse(
+                    success=True,
+                    message=f"Branch '{request.branch_name}' created/updated successfully"
+                )
+            else:
+                return aifs_pb2.CreateBranchResponse(
+                    success=False,
+                    message=f"Failed to create/update branch '{request.branch_name}'"
+                )
+                
+        except Exception as e:
+            logging.error(f"Error creating branch: {e}")
+            context.abort(grpc.StatusCode.INTERNAL, f"Failed to create branch: {str(e)}")
+            return
+    
+    @require_auth({"get"})
+    def GetBranch(self, request: aifs_pb2.GetBranchRequest, context) -> aifs_pb2.GetBranchResponse:
+        """Get branch information.
+        
+        Args:
+            request: GetBranchRequest message
+            context: gRPC context
+            
+        Returns:
+            GetBranchResponse with branch information
+        """
+        try:
+            branch = self.asset_manager.get_branch(request.branch_name, request.namespace)
+            if not branch:
+                context.abort(grpc.StatusCode.NOT_FOUND, f"Branch '{request.branch_name}' not found in namespace '{request.namespace}'")
+                return
+            
+            response = aifs_pb2.GetBranchResponse()
+            response.branch_name = branch["branch_name"]
+            response.namespace = branch["namespace"]
+            response.snapshot_id = branch["snapshot_id"]
+            response.created_at = branch["created_at"]
+            response.updated_at = branch["updated_at"]
+            
+            if branch["metadata"]:
+                for key, value in branch["metadata"].items():
+                    response.metadata[key] = str(value)
+            
+            return response
+            
+        except Exception as e:
+            logging.error(f"Error getting branch: {e}")
+            context.abort(grpc.StatusCode.INTERNAL, f"Failed to get branch: {str(e)}")
+            return
+    
+    @require_auth({"get"})
+    def ListBranches(self, request: aifs_pb2.ListBranchesRequest, context) -> aifs_pb2.ListBranchesResponse:
+        """List branches.
+        
+        Args:
+            request: ListBranchesRequest message
+            context: gRPC context
+            
+        Returns:
+            ListBranchesResponse with list of branches
+        """
+        try:
+            branches = self.asset_manager.list_branches(
+                request.namespace if request.namespace else None,
+                request.limit if request.limit > 0 else 100
+            )
+            
+            response = aifs_pb2.ListBranchesResponse()
+            for branch in branches:
+                branch_response = response.branches.add()
+                branch_response.branch_name = branch["branch_name"]
+                branch_response.namespace = branch["namespace"]
+                branch_response.snapshot_id = branch["snapshot_id"]
+                branch_response.created_at = branch["created_at"]
+                branch_response.updated_at = branch["updated_at"]
+                
+                if branch["metadata"]:
+                    for key, value in branch["metadata"].items():
+                        branch_response.metadata[key] = str(value)
+            
+            return response
+            
+        except Exception as e:
+            logging.error(f"Error listing branches: {e}")
+            context.abort(grpc.StatusCode.INTERNAL, f"Failed to list branches: {str(e)}")
+            return
+    
+    @require_auth({"snapshot"})
+    def DeleteBranch(self, request: aifs_pb2.DeleteBranchRequest, context) -> aifs_pb2.DeleteBranchResponse:
+        """Delete a branch.
+        
+        Args:
+            request: DeleteBranchRequest message
+            context: gRPC context
+            
+        Returns:
+            DeleteBranchResponse with operation result
+        """
+        try:
+            success = self.asset_manager.delete_branch(request.branch_name, request.namespace)
+            
+            if success:
+                return aifs_pb2.DeleteBranchResponse(
+                    success=True,
+                    message=f"Branch '{request.branch_name}' deleted successfully"
+                )
+            else:
+                return aifs_pb2.DeleteBranchResponse(
+                    success=False,
+                    message=f"Branch '{request.branch_name}' not found or deletion failed"
+                )
+                
+        except Exception as e:
+            logging.error(f"Error deleting branch: {e}")
+            context.abort(grpc.StatusCode.INTERNAL, f"Failed to delete branch: {str(e)}")
+            return
+    
+    @require_auth({"get"})
+    def GetBranchHistory(self, request: aifs_pb2.GetBranchHistoryRequest, context) -> aifs_pb2.GetBranchHistoryResponse:
+        """Get branch update history for audit trail.
+        
+        Args:
+            request: GetBranchHistoryRequest message
+            context: gRPC context
+            
+        Returns:
+            GetBranchHistoryResponse with branch history
+        """
+        try:
+            history = self.asset_manager.get_branch_history(
+                request.branch_name,
+                request.namespace,
+                request.limit if request.limit > 0 else 50
+            )
+            
+            response = aifs_pb2.GetBranchHistoryResponse()
+            for entry in history:
+                history_entry = response.history.add()
+                history_entry.id = entry["id"]
+                history_entry.branch_name = entry["branch_name"]
+                history_entry.namespace = entry["namespace"]
+                history_entry.old_snapshot_id = entry["old_snapshot_id"] or ""
+                history_entry.new_snapshot_id = entry["new_snapshot_id"]
+                history_entry.updated_at = entry["updated_at"]
+                
+                if entry["metadata"]:
+                    for key, value in entry["metadata"].items():
+                        history_entry.metadata[key] = str(value)
+            
+            return response
+            
+        except Exception as e:
+            logging.error(f"Error getting branch history: {e}")
+            context.abort(grpc.StatusCode.INTERNAL, f"Failed to get branch history: {str(e)}")
+            return
+    
+    # ============================================================================
+    # Tag Management Methods
+    # ============================================================================
+    
+    @require_auth({"snapshot"})
+    def CreateTag(self, request: aifs_pb2.CreateTagRequest, context) -> aifs_pb2.CreateTagResponse:
+        """Create an immutable tag for audit-grade provenance.
+        
+        Args:
+            request: CreateTagRequest message
+            context: gRPC context
+            
+        Returns:
+            CreateTagResponse with operation result
+        """
+        try:
+            # Convert metadata
+            metadata = dict(request.metadata) if request.metadata else None
+            
+            # Create tag
+            success = self.asset_manager.create_tag(
+                request.tag_name,
+                request.namespace,
+                request.snapshot_id,
+                metadata
+            )
+            
+            if success:
+                return aifs_pb2.CreateTagResponse(
+                    success=True,
+                    message=f"Tag '{request.tag_name}' created successfully"
+                )
+            else:
+                return aifs_pb2.CreateTagResponse(
+                    success=False,
+                    message=f"Failed to create tag '{request.tag_name}'"
+                )
+                
+        except Exception as e:
+            logging.error(f"Error creating tag: {e}")
+            context.abort(grpc.StatusCode.INTERNAL, f"Failed to create tag: {str(e)}")
+            return
+    
+    @require_auth({"get"})
+    def GetTag(self, request: aifs_pb2.GetTagRequest, context) -> aifs_pb2.GetTagResponse:
+        """Get tag information.
+        
+        Args:
+            request: GetTagRequest message
+            context: gRPC context
+            
+        Returns:
+            GetTagResponse with tag information
+        """
+        try:
+            tag = self.asset_manager.get_tag(request.tag_name, request.namespace)
+            if not tag:
+                context.abort(grpc.StatusCode.NOT_FOUND, f"Tag '{request.tag_name}' not found in namespace '{request.namespace}'")
+                return
+            
+            response = aifs_pb2.GetTagResponse()
+            response.tag_name = tag["tag_name"]
+            response.namespace = tag["namespace"]
+            response.snapshot_id = tag["snapshot_id"]
+            response.created_at = tag["created_at"]
+            
+            if tag["metadata"]:
+                for key, value in tag["metadata"].items():
+                    response.metadata[key] = str(value)
+            
+            return response
+            
+        except Exception as e:
+            logging.error(f"Error getting tag: {e}")
+            context.abort(grpc.StatusCode.INTERNAL, f"Failed to get tag: {str(e)}")
+            return
+    
+    @require_auth({"get"})
+    def ListTags(self, request: aifs_pb2.ListTagsRequest, context) -> aifs_pb2.ListTagsResponse:
+        """List tags.
+        
+        Args:
+            request: ListTagsRequest message
+            context: gRPC context
+            
+        Returns:
+            ListTagsResponse with list of tags
+        """
+        try:
+            tags = self.asset_manager.list_tags(
+                request.namespace if request.namespace else None,
+                request.limit if request.limit > 0 else 100
+            )
+            
+            response = aifs_pb2.ListTagsResponse()
+            for tag in tags:
+                tag_response = response.tags.add()
+                tag_response.tag_name = tag["tag_name"]
+                tag_response.namespace = tag["namespace"]
+                tag_response.snapshot_id = tag["snapshot_id"]
+                tag_response.created_at = tag["created_at"]
+                
+                if tag["metadata"]:
+                    for key, value in tag["metadata"].items():
+                        tag_response.metadata[key] = str(value)
+            
+            return response
+            
+        except Exception as e:
+            logging.error(f"Error listing tags: {e}")
+            context.abort(grpc.StatusCode.INTERNAL, f"Failed to list tags: {str(e)}")
+            return
+    
+    @require_auth({"snapshot"})
+    def DeleteTag(self, request: aifs_pb2.DeleteTagRequest, context) -> aifs_pb2.DeleteTagResponse:
+        """Delete a tag.
+        
+        Note: While tags are immutable, deletion may be needed for cleanup.
+        This should be used with caution as it breaks audit-grade provenance.
+        
+        Args:
+            request: DeleteTagRequest message
+            context: gRPC context
+            
+        Returns:
+            DeleteTagResponse with operation result
+        """
+        try:
+            success = self.asset_manager.delete_tag(request.tag_name, request.namespace)
+            
+            if success:
+                return aifs_pb2.DeleteTagResponse(
+                    success=True,
+                    message=f"Tag '{request.tag_name}' deleted successfully"
+                )
+            else:
+                return aifs_pb2.DeleteTagResponse(
+                    success=False,
+                    message=f"Tag '{request.tag_name}' not found or deletion failed"
+                )
+                
+        except Exception as e:
+            logging.error(f"Error deleting tag: {e}")
+            context.abort(grpc.StatusCode.INTERNAL, f"Failed to delete tag: {str(e)}")
+            return
 
 
-def serve(root_dir: str = "~/.aifs", port: int = 50051, max_workers: int = 10, dev_mode: bool = False):
+def serve(root_dir: str = "~/.aifs", port: int = 50051, max_workers: int = 10, dev_mode: bool = False,
+          compression_level: int = 1):
     """Start the AIFS gRPC server.
     
     Args:
@@ -906,20 +1240,22 @@ def serve(root_dir: str = "~/.aifs", port: int = 50051, max_workers: int = 10, d
         port: Port to listen on
         max_workers: Maximum number of worker threads
         dev_mode: Enable development features like gRPC reflection
+        compression_level: zstd compression level (1-22, default 1 as per spec)
     """
     # Expand user directory
     root_dir = os.path.expanduser(root_dir)
     
-    # Initialize asset manager
-    asset_manager = AssetManager(root_dir)
+    # Initialize asset manager with zstd compression
+    asset_manager = AssetManager(root_dir, compression_level=compression_level)
     
     # Configure gRPC options for large file support and compression
-    # Note: gRPC natively supports Gzip/Deflate. zstd would need custom implementation
+    # Note: gRPC natively supports Gzip/Deflate. zstd is handled at application level
     options = [
         ('grpc.max_send_message_length', 100 * 1024 * 1024),  # 100MB
         ('grpc.max_receive_message_length', 100 * 1024 * 1024),  # 100MB
         ('grpc.max_message_length', 100 * 1024 * 1024),  # 100MB
-        ('grpc.default_compression_algorithm', grpc.Compression.Gzip),  # Enable compression
+        ('grpc.default_compression_algorithm', grpc.Compression.Gzip),  # Enable gRPC compression
+        # zstd compression is handled at application level via CompressionService
     ]
     
     # Create server

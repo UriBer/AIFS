@@ -17,6 +17,7 @@ from .crypto import CryptoManager
 from .uri import AIFSUri
 from .asset_kinds_simple import SimpleAssetKindEncoder as AssetKindEncoder, SimpleAssetKindValidator as AssetKindValidator, AssetKind, TensorData, EmbeddingData, ArtifactData
 from .transaction import TransactionManager, StrongCausalityManager
+from .compression import CompressionService
 
 
 class AssetManager:
@@ -27,7 +28,8 @@ class AssetManager:
     """
     
     def __init__(self, root_dir: Union[str, pathlib.Path], embedding_dim: int = 128,
-                 private_key: Optional[bytes] = None, enable_strong_causality: bool = True):
+                 private_key: Optional[bytes] = None, enable_strong_causality: bool = True,
+                 compression_level: int = 1):
         """Initialize asset manager.
         
         Args:
@@ -35,15 +37,17 @@ class AssetManager:
             embedding_dim: Dimension of embedding vectors (default: 128 for testing)
             private_key: Optional Ed25519 private key for signing snapshots
             enable_strong_causality: Enable strong causality guarantees
+            compression_level: zstd compression level (1-22, default 1 as per spec)
         """
         self.root_dir = pathlib.Path(root_dir)
         self.root_dir.mkdir(parents=True, exist_ok=True)
         
         # Initialize components
-        self.storage = StorageBackend(self.root_dir / "storage")
+        self.storage = StorageBackend(self.root_dir / "storage", compression_level=compression_level)
         self.vector_db = VectorDB(str(self.root_dir / "vectors"), dimension=embedding_dim)
-        self.metadata_db = MetadataStore(str(self.root_dir / "metadata.db"))
-        self.crypto_manager = CryptoManager(private_key)
+        self.crypto_manager = CryptoManager(private_key, str(self.root_dir / "keys.db"))
+        self.metadata_db = MetadataStore(str(self.root_dir / "metadata.db"), self.crypto_manager)
+        self.compression_service = CompressionService(compression_level)
         
         # Transaction and strong causality management
         self.enable_strong_causality = enable_strong_causality
@@ -249,7 +253,31 @@ class AssetManager:
             # Without strong causality, return asset if it exists
             return self.metadata_db.get_asset(asset_id)
         
-        return self.causality_manager.get_asset_with_causality(asset_id)
+        # Check if asset is visible
+        if not self.transaction_manager.is_asset_visible(asset_id):
+            return None
+        
+        # Get metadata from metadata store
+        metadata = self.metadata_db.get_asset(asset_id)
+        if metadata is None:
+            return None
+        
+        # Get data from storage
+        data = self.storage.get(asset_id)
+        if data is None:
+            return None
+        
+        # Get lineage (respecting strong causality)
+        parents = self.get_parents(asset_id)
+        children = self.get_children(asset_id)
+        
+        # Combine everything
+        return {
+            **metadata,
+            "data": data,
+            "parents": parents,
+            "children": children
+        }
     
     def wait_for_dependencies(self, transaction_id: str, timeout_seconds: float = 30.0) -> bool:
         """Wait for all dependencies to be committed.
@@ -435,6 +463,10 @@ class AssetManager:
         Returns:
             List of asset metadata dictionaries
         """
+        # Use strong causality if enabled
+        if self.enable_strong_causality and self.causality_manager:
+            return self.causality_manager.get_visible_assets(limit=limit, offset=offset)
+        
         return self.metadata_db.list_assets(limit=limit, offset=offset)
     
     def get_asset_uri(self, asset_id: str) -> str:
@@ -481,6 +513,144 @@ class AssetManager:
         """
         return AIFSUri.parse_snapshot_uri(uri)
     
+    def register_namespace_key(self, namespace: str, metadata: Optional[Dict] = None) -> str:
+        """Register the current public key for a namespace.
+        
+        This implements the AIFS specification requirement that clients
+        SHOULD pin public keys by namespace.
+        
+        Args:
+            namespace: Namespace identifier
+            metadata: Optional metadata dictionary
+            
+        Returns:
+            Public key hex string
+        """
+        return self.crypto_manager.register_namespace_key(namespace, metadata)
+    
+    def pin_trusted_key(self, key_id: str, public_key_hex: str, namespace: Optional[str] = None, 
+                       metadata: Optional[Dict] = None) -> None:
+        """Pin a trusted public key for verification.
+        
+        Args:
+            key_id: Unique identifier for the key
+            public_key_hex: Public key as hex string
+            namespace: Optional namespace for the key
+            metadata: Optional metadata dictionary
+        """
+        self.crypto_manager.pin_trusted_key(key_id, public_key_hex, namespace, metadata)
+    
+    def get_namespace_key(self, namespace: str) -> Optional[str]:
+        """Get the public key for a namespace.
+        
+        Args:
+            namespace: Namespace identifier
+            
+        Returns:
+            Public key hex string or None if not found
+        """
+        return self.crypto_manager.get_namespace_key(namespace)
+    
+    def list_namespace_keys(self) -> List[Dict]:
+        """List all namespace keys.
+        
+        Returns:
+            List of namespace key dictionaries
+        """
+        return self.crypto_manager.list_namespace_keys()
+    
+    def list_trusted_keys(self) -> List[Dict]:
+        """List all trusted keys.
+        
+        Returns:
+            List of trusted key dictionaries
+        """
+        return self.crypto_manager.list_trusted_keys()
+    
+    def verify_snapshot_signature(self, snapshot_id: str) -> bool:
+        """Verify the Ed25519 signature of a snapshot.
+        
+        This method implements the AIFS specification requirement that Ed25519 signatures
+        of snapshot roots MUST be verified before exposing a branch.
+        
+        Args:
+            snapshot_id: Snapshot ID to verify
+            
+        Returns:
+            True if signature is valid, False otherwise
+        """
+        return self.metadata_db.verify_snapshot_signature(snapshot_id)
+    
+    def get_verified_snapshot(self, snapshot_id: str) -> Optional[Dict]:
+        """Get a snapshot only if its signature is valid.
+        
+        This method ensures that snapshots are only returned if their Ed25519
+        signatures are valid, implementing the AIFS specification requirement.
+        
+        Args:
+            snapshot_id: Snapshot ID to retrieve
+            
+        Returns:
+            Snapshot data if signature is valid, None otherwise
+        """
+        return self.metadata_db.get_verified_snapshot(snapshot_id)
+    
+    def list_verified_snapshots(self, namespace: Optional[str] = None, limit: int = 100) -> List[Dict]:
+        """List snapshots with verified signatures only.
+        
+        Args:
+            namespace: Optional namespace filter
+            limit: Maximum number of snapshots to return
+            
+        Returns:
+            List of snapshots with valid signatures
+        """
+        return self.metadata_db.list_verified_snapshots(namespace, limit)
+    
+    def get_parents(self, asset_id: str) -> List[Dict]:
+        """Get parent assets (respecting strong causality).
+        
+        Args:
+            asset_id: Asset ID
+            
+        Returns:
+            List of visible parent asset metadata dictionaries
+        """
+        # Get all parents from metadata
+        all_parents = self.metadata_db.get_parents(asset_id)
+        
+        # Filter to only visible parents if strong causality is enabled
+        if self.enable_strong_causality and self.causality_manager:
+            visible_parents = []
+            for parent in all_parents:
+                if self.transaction_manager.is_asset_visible(parent["asset_id"]):
+                    visible_parents.append(parent)
+            return visible_parents
+        
+        return all_parents
+    
+    def get_children(self, asset_id: str) -> List[Dict]:
+        """Get child assets (respecting strong causality).
+        
+        Args:
+            asset_id: Asset ID
+            
+        Returns:
+            List of visible child asset metadata dictionaries
+        """
+        # Get all children from metadata
+        all_children = self.metadata_db.get_children(asset_id)
+        
+        # Filter to only visible children if strong causality is enabled
+        if self.enable_strong_causality and self.causality_manager:
+            visible_children = []
+            for child in all_children:
+                if self.transaction_manager.is_asset_visible(child["asset_id"]):
+                    visible_children.append(child)
+            return visible_children
+        
+        return all_children
+    
     def get_asset(self, asset_id: str) -> Optional[Dict]:
         """Retrieve an asset.
         
@@ -490,6 +660,10 @@ class AssetManager:
         Returns:
             Asset dictionary or None if not found
         """
+        # Use strong causality if enabled
+        if self.enable_strong_causality and self.causality_manager:
+            return self.get_asset_with_causality(asset_id)
+        
         # Get data from storage
         data = self.storage.get(asset_id)
         if data is None:
@@ -508,9 +682,9 @@ class AssetManager:
                 "metadata": {}
             }
         
-        # Get lineage
-        parents = self.metadata_db.get_parents(asset_id)
-        children = self.metadata_db.get_children(asset_id)
+        # Get lineage (respecting strong causality)
+        parents = self.get_parents(asset_id)
+        children = self.get_children(asset_id)
         
         # Combine everything
         return {
@@ -611,6 +785,9 @@ class AssetManager:
     def verify_snapshot(self, snapshot_id: str, public_key: bytes = None) -> bool:
         """Verify a snapshot's signature.
         
+        This method delegates to the MetadataStore's verify_snapshot_signature method
+        which implements the AIFS specification requirement for signature verification.
+        
         Args:
             snapshot_id: ID of the snapshot to verify
             public_key: Public key for verification (uses default if None)
@@ -618,35 +795,8 @@ class AssetManager:
         Returns:
             True if signature is valid, False otherwise
         """
-        try:
-            snapshot = self.metadata_db.get_snapshot(snapshot_id)
-            if not snapshot:
-                return False
-            
-            # Get the public key to use
-            if public_key is None:
-                public_key = self.crypto_manager.get_public_key()
-            
-            # Extract signature and data
-            signature_hex = snapshot.get("signature")
-            if not signature_hex:
-                return False
-            
-            # Reconstruct the data that was signed
-            merkle_root = snapshot.get("merkle_root", "")
-            timestamp = snapshot.get("created_at", "")
-            namespace = snapshot.get("namespace", "")
-            
-            # Verify the signature
-            is_valid = self.crypto_manager.verify_snapshot_signature(
-                signature_hex, merkle_root, timestamp, namespace, public_key
-            )
-            
-            return is_valid
-            
-        except Exception as e:
-            print(f"Snapshot verification failed: {e}")
-            return False
+        # Use the MetadataStore's verification method which handles namespace keys
+        return self.metadata_db.verify_snapshot_signature(snapshot_id)
     
     def get_public_key(self) -> bytes:
         """Get the public key for snapshot verification.
@@ -704,3 +854,129 @@ class AssetManager:
         except Exception as e:
             logging.error(f"Error deleting asset {asset_id}: {e}")
             return False
+    
+    # ============================================================================
+    # Branch Management Methods
+    # ============================================================================
+    
+    def create_branch(self, branch_name: str, namespace: str, snapshot_id: str, 
+                     metadata: Optional[Dict] = None) -> bool:
+        """Create or update a branch with atomic transaction.
+        
+        Args:
+            branch_name: Name of the branch
+            namespace: Namespace for the branch
+            snapshot_id: Snapshot ID to point to
+            metadata: Optional metadata dictionary
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        return self.metadata_db.create_branch(branch_name, namespace, snapshot_id, metadata)
+    
+    def get_branch(self, branch_name: str, namespace: str) -> Optional[Dict]:
+        """Get branch information.
+        
+        Args:
+            branch_name: Name of the branch
+            namespace: Namespace for the branch
+            
+        Returns:
+            Branch dictionary or None if not found
+        """
+        return self.metadata_db.get_branch(branch_name, namespace)
+    
+    def list_branches(self, namespace: Optional[str] = None, limit: int = 100) -> List[Dict]:
+        """List branches.
+        
+        Args:
+            namespace: Optional namespace filter
+            limit: Maximum number of branches to return
+            
+        Returns:
+            List of branch dictionaries
+        """
+        return self.metadata_db.list_branches(namespace, limit)
+    
+    def get_branch_history(self, branch_name: str, namespace: str, limit: int = 50) -> List[Dict]:
+        """Get branch update history for audit trail.
+        
+        Args:
+            branch_name: Name of the branch
+            namespace: Namespace for the branch
+            limit: Maximum number of history entries to return
+            
+        Returns:
+            List of branch history dictionaries
+        """
+        return self.metadata_db.get_branch_history(branch_name, namespace, limit)
+    
+    def delete_branch(self, branch_name: str, namespace: str) -> bool:
+        """Delete a branch.
+        
+        Args:
+            branch_name: Name of the branch
+            namespace: Namespace for the branch
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        return self.metadata_db.delete_branch(branch_name, namespace)
+    
+    # ============================================================================
+    # Tag Management Methods
+    # ============================================================================
+    
+    def create_tag(self, tag_name: str, namespace: str, snapshot_id: str, 
+                  metadata: Optional[Dict] = None) -> bool:
+        """Create an immutable tag for audit-grade provenance.
+        
+        Args:
+            tag_name: Name of the tag
+            namespace: Namespace for the tag
+            snapshot_id: Snapshot ID to tag
+            metadata: Optional metadata dictionary
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        return self.metadata_db.create_tag(tag_name, namespace, snapshot_id, metadata)
+    
+    def get_tag(self, tag_name: str, namespace: str) -> Optional[Dict]:
+        """Get tag information.
+        
+        Args:
+            tag_name: Name of the tag
+            namespace: Namespace for the tag
+            
+        Returns:
+            Tag dictionary or None if not found
+        """
+        return self.metadata_db.get_tag(tag_name, namespace)
+    
+    def list_tags(self, namespace: Optional[str] = None, limit: int = 100) -> List[Dict]:
+        """List tags.
+        
+        Args:
+            namespace: Optional namespace filter
+            limit: Maximum number of tags to return
+            
+        Returns:
+            List of tag dictionaries
+        """
+        return self.metadata_db.list_tags(namespace, limit)
+    
+    def delete_tag(self, tag_name: str, namespace: str) -> bool:
+        """Delete a tag.
+        
+        Note: While tags are immutable, deletion may be needed for cleanup.
+        This should be used with caution as it breaks audit-grade provenance.
+        
+        Args:
+            tag_name: Name of the tag
+            namespace: Namespace for the tag
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        return self.metadata_db.delete_tag(tag_name, namespace)

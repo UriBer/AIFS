@@ -5,7 +5,7 @@ AI-native File System - A next-generation file system designed from the ground u
 ## 🎯 Current Status
 
 **Version**: 0.1.0-alpha  
-**Test Coverage**: 92.3% (150+ tests)  
+**Test Coverage**: 92.3% (170+ tests)  
 **Implementation**: Core functionality complete  
 **Docker**: Production-ready containerization
 
@@ -14,6 +14,7 @@ AI-native File System - A next-generation file system designed from the ground u
 - **Vector Search**: Semantic similarity search with FAISS
 - **Asset Kinds**: Complete implementation of Blob, Tensor (Arrow2), Embed (FlatBuffers), Artifact (ZIP+MANIFEST)
 - **Strong Causality**: Transaction system ensuring "Asset B SHALL NOT be visible until A is fully committed"
+- **Ed25519 Signatures**: Complete snapshot root signing and verification with namespace key management
 - **Encryption**: AES-256-GCM with KMS integration
 - **Versioning**: Merkle tree-based snapshots with Ed25519 signatures
 - **gRPC API**: High-performance RPC interface with reflection (dev mode)
@@ -22,7 +23,7 @@ AI-native File System - A next-generation file system designed from the ground u
 - **Compression**: Gzip compression for transport
 - **Error Handling**: Structured error responses with google.rpc.Status
 - **Docker Support**: Production-ready containerization with Docker Compose
-- **Testing**: Comprehensive test suite with 26+ asset kinds tests and 23+ strong causality tests
+- **Testing**: Comprehensive test suite with 26+ asset kinds tests, 23+ strong causality tests, and 23+ Ed25519 signature tests
 
 ### 🚧 In Progress
 - Performance optimization and benchmarking

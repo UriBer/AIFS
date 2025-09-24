@@ -11,28 +11,31 @@ import numpy as np
 
 # Import generated protobuf code
 from .proto import aifs_pb2, aifs_pb2_grpc
+from .compression import CompressionService
 
 
 class AIFSClient:
     """Client for the AIFS gRPC service."""
     
-    def __init__(self, server_address: str = "localhost:50051"):
+    def __init__(self, server_address: str = "localhost:50051", compression_level: int = 1):
         """Initialize client.
         
         Args:
             server_address: Address of the AIFS server
+            compression_level: zstd compression level (1-22, default 1 as per spec)
         """
         # Configure gRPC options for large file support and compression
         options = [
             ('grpc.max_send_message_length', 100 * 1024 * 1024),  # 100MB
             ('grpc.max_receive_message_length', 100 * 1024 * 1024),  # 100MB
             ('grpc.max_message_length', 100 * 1024 * 1024),  # 100MB
-            ('grpc.default_compression_algorithm', grpc.Compression.Gzip),  # Enable compression
+            ('grpc.default_compression_algorithm', grpc.Compression.Gzip),  # Enable gRPC compression
         ]
         
         self.channel = grpc.insecure_channel(server_address, options=options)
         self.stub = aifs_pb2_grpc.AIFSStub(self.channel)
         self.auth_token = None
+        self.compression_service = CompressionService(compression_level)
     
     def set_auth_token(self, token: str):
         """Set the authorization token for requests.

@@ -224,6 +224,12 @@ class TransactionManager:
             cursor = conn.cursor()
             
             for parent_asset_id in transaction.dependencies:
+                # Check if the parent asset is in the same transaction
+                if parent_asset_id in transaction.assets:
+                    # Parent is in the same transaction, so it's considered "committed" for this transaction
+                    continue
+                
+                # Check if the parent asset is visible (committed in another transaction)
                 cursor.execute(
                     "SELECT visible FROM asset_visibility WHERE asset_id = ?",
                     (parent_asset_id,)
@@ -379,7 +385,7 @@ class TransactionManager:
             
             conn.close()
             
-            return result is not None and result[0]
+            return result is not None and bool(result[0])
     
     def get_asset_transaction(self, asset_id: str) -> Optional[str]:
         """Get the transaction ID for an asset.
@@ -634,7 +640,15 @@ class StrongCausalityManager:
         if not self.transaction_manager.is_asset_visible(asset_id):
             return None
         
-        return self.metadata_store.get_asset(asset_id)
+        # Get metadata from metadata store
+        metadata = self.metadata_store.get_asset(asset_id)
+        if metadata is None:
+            return None
+        
+        # Get data from storage (we need to access the storage backend)
+        # This is a limitation of the current architecture - we need access to storage
+        # For now, return just the metadata and let the caller handle data retrieval
+        return metadata
     
     def wait_for_dependencies(self, transaction_id: str, timeout_seconds: float = 30.0) -> bool:
         """Wait for all dependencies to be committed.

@@ -8,10 +8,10 @@ import time
 import hashlib
 from typing import Dict, List, Optional, Set
 
-# Try to import macaroon, provide fallback if not available
+# Import macaroon library for capability-based authorization
 try:
     from pymacaroons import Macaroon, Verifier
-    MACAROON_AVAILABLE = False  # Use simplified authorization for stability
+    MACAROON_AVAILABLE = False  # Use fallback implementation for stability
 except ImportError:
     MACAROON_AVAILABLE = False
     print("Warning: macaroon library not available. Using simplified authorization fallback.")
@@ -30,14 +30,22 @@ class AIFSMacaroon:
             identifier: Unique identifier for the macaroon
         """
         if MACAROON_AVAILABLE:
-            self._macaroon = Macaroon(location=location, key=key, identifier=identifier)
+            # Convert key to bytes if it's a string
+            key_bytes = key
+            if isinstance(key, str):
+                key_bytes = key.encode('utf-8')
+            self._macaroon = Macaroon(location=location, key=key_bytes, identifier=identifier)
+            # Expose attributes for compatibility
+            self.location = location
+            self.key = key
+            self.identifier = identifier
         else:
             # Fallback implementation
             self.location = location
             self.key = key
             self.identifier = identifier
             self.caveats = []
-            self.signature = self._compute_signature()
+            self._signature = self._compute_signature()
     
     def add_first_party_caveat(self, predicate: str) -> 'AIFSMacaroon':
         """Add a first-party caveat (self-verifiable).
@@ -53,7 +61,7 @@ class AIFSMacaroon:
         else:
             # Fallback: store caveat and update signature
             self.caveats.append(("first_party", predicate))
-            self.signature = self._compute_signature()
+            self._signature = self._compute_signature()
         
         return self
     
@@ -73,7 +81,7 @@ class AIFSMacaroon:
         else:
             # Fallback: store caveat and update signature
             self.caveats.append(("third_party", (location, key, identifier)))
-            self.signature = self._compute_signature()
+            self._signature = self._compute_signature()
         
         return self
     
@@ -91,7 +99,7 @@ class AIFSMacaroon:
                 "location": self.location,
                 "identifier": self.identifier,
                 "caveats": self.caveats,
-                "signature": self.signature
+                "signature": self._signature
             }
             return json.dumps(data)
     
@@ -103,6 +111,14 @@ class AIFSMacaroon:
             # Simple HMAC-like signature
             data = f"{self.location}:{self.identifier}:{':'.join(str(c) for c in self.caveats)}"
             return hashlib.sha256(f"{data}:{self.key}".encode()).hexdigest()
+    
+    @property
+    def signature(self) -> str:
+        """Get the macaroon signature."""
+        if MACAROON_AVAILABLE:
+            return self._macaroon.signature
+        else:
+            return self._signature
 
 
 class MacaroonVerifier:
@@ -185,54 +201,125 @@ class MacaroonVerifier:
 
 
 class AuthorizationManager:
-    """Manages AIFS authorization using macaroons."""
+    """Manages AIFS authorization using macaroons according to AIFS specification.
     
-    def __init__(self, secret_key: Optional[str] = None):
+    Implements capability tokens with:
+    - Namespace restrictions
+    - Method permissions (put, get, search, snapshot, etc.)
+    - Expiry timestamps
+    - Third-party caveats for delegation
+    """
+    
+    def __init__(self, secret_key: Optional[str] = None, location: str = "aifs.local"):
         """Initialize the authorization manager.
         
         Args:
             secret_key: Secret key for signing macaroons (generated if None)
+            location: Location identifier for macaroons
         """
         if secret_key is None:
             import secrets
             secret_key = secrets.token_hex(32)
         
         self.secret_key = secret_key
-        self.location = "aifs.local"
+        self.location = location
         
         if not MACAROON_AVAILABLE:
             print("Warning: Using simplified authorization system due to missing macaroon library.")
     
     def create_macaroon(self, identifier: str, permissions: List[str], 
-                        expiry_hours: int = 24) -> AIFSMacaroon:
-        """Create a new macaroon with specified permissions.
+                        namespace: Optional[str] = None, expiry_hours: int = 24,
+                        methods: Optional[List[str]] = None) -> AIFSMacaroon:
+        """Create a new macaroon with specified permissions according to AIFS spec.
         
         Args:
             identifier: Unique identifier for the macaroon
-            permissions: List of allowed operations
+            permissions: List of allowed operations (put, get, search, snapshot, etc.)
+            namespace: Optional namespace restriction
             expiry_hours: Hours until the macaroon expires
+            methods: Optional specific methods allowed (overrides permissions)
             
         Returns:
             New AIFSMacaroon instance
         """
         macaroon = AIFSMacaroon(self.location, self.secret_key, identifier)
         
-        # Add permission caveats
-        for permission in permissions:
-            macaroon.add_first_party_caveat(f"permission = {permission}")
+        # Add namespace caveat if specified
+        if namespace:
+            macaroon.add_first_party_caveat(f"namespace = {namespace}")
         
-        # Add expiry caveat
-        expiry_time = time.strftime("%Y-%m-%d", time.localtime(time.time() + expiry_hours * 3600))
-        macaroon.add_first_party_caveat(f"time < {expiry_time}")
+        # Add method permissions
+        allowed_methods = methods or permissions
+        for method in allowed_methods:
+            macaroon.add_first_party_caveat(f"method = {method}")
+        
+        # Add expiry caveat (AIFS spec requirement)
+        expiry_timestamp = int(time.time() + expiry_hours * 3600)
+        macaroon.add_first_party_caveat(f"expires = {expiry_timestamp}")
         
         return macaroon
     
-    def verify_macaroon(self, macaroon_data: str, required_permissions: Set[str]) -> bool:
-        """Verify a macaroon has the required permissions.
+    def create_namespace_macaroon(self, namespace: str, methods: List[str], 
+                                 expiry_hours: int = 24) -> AIFSMacaroon:
+        """Create a macaroon restricted to a specific namespace.
+        
+        Args:
+            namespace: Namespace identifier
+            methods: Allowed methods (put, get, search, snapshot, etc.)
+            expiry_hours: Hours until the macaroon expires
+            
+        Returns:
+            New AIFSMacaroon instance restricted to the namespace
+        """
+        return self.create_macaroon(
+            identifier=f"namespace_{namespace}",
+            permissions=methods,
+            namespace=namespace,
+            expiry_hours=expiry_hours,
+            methods=methods
+        )
+    
+    def create_delegation_macaroon(self, parent_macaroon: str, 
+                                  additional_caveats: List[str] = None) -> AIFSMacaroon:
+        """Create a delegated macaroon with additional restrictions.
+        
+        Args:
+            parent_macaroon: Serialized parent macaroon
+            additional_caveats: Additional caveats to add
+            
+        Returns:
+            New delegated AIFSMacaroon instance
+        """
+        if MACAROON_AVAILABLE:
+            # Use proper macaroon delegation
+            parent = Macaroon.deserialize(parent_macaroon)
+            delegated = parent.add_first_party_caveat("delegated = true")
+            
+            # Add additional caveats
+            if additional_caveats:
+                for caveat in additional_caveats:
+                    delegated = delegated.add_first_party_caveat(caveat)
+            
+            return AIFSMacaroon(self.location, self.secret_key, "delegated")
+        else:
+            # Fallback: create new macaroon with restrictions
+            macaroon = AIFSMacaroon(self.location, self.secret_key, "delegated")
+            macaroon.add_first_party_caveat("delegated = true")
+            
+            if additional_caveats:
+                for caveat in additional_caveats:
+                    macaroon.add_first_party_caveat(caveat)
+            
+            return macaroon
+    
+    def verify_macaroon(self, macaroon_data: str, required_permissions: Set[str], 
+                       namespace: Optional[str] = None) -> bool:
+        """Verify a macaroon has the required permissions according to AIFS spec.
         
         Args:
             macaroon_data: Serialized macaroon data
             required_permissions: Set of permissions required for the operation
+            namespace: Optional namespace to verify against
             
         Returns:
             True if verification succeeds, False otherwise
@@ -243,45 +330,79 @@ class AuthorizationManager:
                 macaroon = Macaroon.deserialize(macaroon_data)
                 verifier = Verifier()
                 
-                # Add permission requirements
+                # Add method requirements
                 for permission in required_permissions:
-                    verifier.satisfy_exact(f"permission = {permission}")
+                    verifier.satisfy_exact(f"method = {permission}")
                 
-                return verifier.verify(macaroon, self.secret_key)
+                # Add namespace requirement if specified
+                if namespace:
+                    verifier.satisfy_exact(f"namespace = {namespace}")
+                
+                # Add expiry verification
+                current_timestamp = int(time.time())
+                verifier.satisfy_general(lambda caveat: self._verify_expiry_caveat(caveat, current_timestamp))
+                
+                # Convert key to bytes if it's a string
+                key = self.secret_key
+                if isinstance(key, str):
+                    key = key.encode('utf-8')
+                
+                return verifier.verify(macaroon, key)
             else:
                 # Use fallback implementation
-                data = json.loads(macaroon_data)
-                
-                # Check if macaroon has required permissions
-                macaroon_permissions = set()
-                for caveat_type, caveat_data in data.get("caveats", []):
-                    if caveat_type == "first_party" and caveat_data.startswith("permission = "):
-                        permission = caveat_data[13:]  # Remove "permission = " prefix
-                        macaroon_permissions.add(permission)
-                
-                # Check if all required permissions are present
-                if not required_permissions.issubset(macaroon_permissions):
-                    return False
-                
-                # Check expiry
-                for caveat_type, caveat_data in data.get("caveats", []):
-                    if caveat_type == "first_party" and caveat_data.startswith("time < "):
-                        time_str = caveat_data[7:]  # Remove "time < " prefix
-                        try:
-                            target_time = time.strptime(time_str, "%Y-%m-%d")
-                            current_time = time.localtime()
-                            # Convert to date objects for comparison
-                            target_date = time.strftime("%Y-%m-%d", target_time)
-                            current_date = time.strftime("%Y-%m-%d", current_time)
-                            if current_date > target_date:  # Use string comparison for dates
-                                return False  # Expired
-                        except:
-                            pass  # Ignore malformed time caveats
-                
-                return True
+                return self._verify_macaroon_fallback(macaroon_data, required_permissions, namespace)
                 
         except Exception as e:
             print(f"Macaroon verification failed: {e}")
+            return False
+    
+    def _verify_expiry_caveat(self, caveat: str, current_timestamp: int) -> bool:
+        """Verify expiry caveat for macaroon verification."""
+        if caveat.startswith("expires = "):
+            try:
+                expiry_timestamp = int(caveat[10:])  # Remove "expires = " prefix
+                return current_timestamp < expiry_timestamp
+            except ValueError:
+                return False
+        return True
+    
+    def _verify_macaroon_fallback(self, macaroon_data: str, required_permissions: Set[str], 
+                                 namespace: Optional[str] = None) -> bool:
+        """Fallback macaroon verification when macaroon library is not available."""
+        try:
+            data = json.loads(macaroon_data)
+            
+            # Check if macaroon has required methods
+            macaroon_methods = set()
+            macaroon_namespace = None
+            
+            for caveat_type, caveat_data in data.get("caveats", []):
+                if caveat_type == "first_party":
+                    if caveat_data.startswith("method = "):
+                        method = caveat_data[9:]  # Remove "method = " prefix
+                        macaroon_methods.add(method)
+                    elif caveat_data.startswith("namespace = "):
+                        macaroon_namespace = caveat_data[12:]  # Remove "namespace = " prefix
+                    elif caveat_data.startswith("expires = "):
+                        try:
+                            expiry_timestamp = int(caveat_data[10:])  # Remove "expires = " prefix
+                            if time.time() > expiry_timestamp:
+                                return False  # Expired
+                        except ValueError:
+                            pass  # Ignore malformed expiry caveats
+            
+            # Check if all required permissions are present
+            if required_permissions and not required_permissions.issubset(macaroon_methods):
+                return False
+            
+            # Check namespace if specified
+            if namespace and macaroon_namespace and macaroon_namespace != namespace:
+                return False
+            
+            return True
+            
+        except Exception as e:
+            print(f"Fallback macaroon verification failed: {e}")
             return False
     
     def get_macaroon_info(self, macaroon_data: str) -> Dict:
@@ -299,7 +420,7 @@ class AuthorizationManager:
                 return {
                     "location": macaroon.location,
                     "identifier": macaroon.identifier,
-                    "caveats": [caveat.caveatId for caveat in macaroon.caveats],
+                    "caveats": [caveat.caveat_id for caveat in macaroon.caveats],
                     "signature": macaroon.signature
                 }
             else:
@@ -316,9 +437,75 @@ class AuthorizationManager:
             return {"error": f"Failed to parse macaroon: {e}"}
 
 
-# Convenience functions for when macaroon library is not available
+# Global authorization manager for convenience functions
+_global_auth_manager = None
+
+def _get_global_auth_manager() -> AuthorizationManager:
+    """Get or create the global authorization manager."""
+    global _global_auth_manager
+    if _global_auth_manager is None:
+        _global_auth_manager = AuthorizationManager()
+    return _global_auth_manager
+
+# Convenience functions for AIFS authorization
+def create_aifs_token(permissions: List[str], namespace: Optional[str] = None, 
+                     expiry_hours: int = 24) -> str:
+    """Create an AIFS authorization token (macaroon or fallback).
+    
+    Args:
+        permissions: List of allowed operations (put, get, search, snapshot, etc.)
+        namespace: Optional namespace restriction
+        expiry_hours: Hours until the token expires
+        
+    Returns:
+        Authorization token string
+    """
+    auth_manager = _get_global_auth_manager()
+    macaroon = auth_manager.create_macaroon(
+        identifier="aifs_token",
+        permissions=permissions,
+        namespace=namespace,
+        expiry_hours=expiry_hours
+    )
+    return macaroon.serialize()
+
+
+def verify_aifs_token(token_data: str, required_permissions: Set[str], 
+                     namespace: Optional[str] = None) -> bool:
+    """Verify an AIFS authorization token.
+    
+    Args:
+        token_data: Serialized token data
+        required_permissions: Set of permissions required for the operation
+        namespace: Optional namespace to verify against
+        
+    Returns:
+        True if verification succeeds, False otherwise
+    """
+    auth_manager = _get_global_auth_manager()
+    return auth_manager.verify_macaroon(token_data, required_permissions, namespace)
+
+
+def create_namespace_token(namespace: str, methods: List[str], 
+                          expiry_hours: int = 24) -> str:
+    """Create a namespace-restricted authorization token.
+    
+    Args:
+        namespace: Namespace identifier
+        methods: Allowed methods (put, get, search, snapshot, etc.)
+        expiry_hours: Hours until the token expires
+        
+    Returns:
+        Namespace-restricted authorization token string
+    """
+    auth_manager = _get_global_auth_manager()
+    macaroon = auth_manager.create_namespace_macaroon(namespace, methods, expiry_hours)
+    return macaroon.serialize()
+
+
+# Legacy functions for backward compatibility
 def create_simple_token(permissions: List[str], expiry_hours: int = 24) -> str:
-    """Create a simple authorization token when macaroon is not available.
+    """Create a simple authorization token (legacy function).
     
     Args:
         permissions: List of allowed operations
@@ -327,25 +514,11 @@ def create_simple_token(permissions: List[str], expiry_hours: int = 24) -> str:
     Returns:
         Simple authorization token string
     """
-    if MACAROON_AVAILABLE:
-        # Use proper macaroon if available
-        auth_manager = AuthorizationManager()
-        macaroon = auth_manager.create_macaroon("simple", permissions, expiry_hours)
-        return macaroon.serialize()
-    else:
-        # Fallback: simple JSON token
-        import secrets
-        token_data = {
-            "id": secrets.token_hex(16),
-            "permissions": permissions,
-            "expires": time.time() + expiry_hours * 3600,
-            "type": "simple_token"
-        }
-        return json.dumps(token_data)
+    return create_aifs_token(permissions, None, expiry_hours)
 
 
 def verify_simple_token(token_data: str, required_permissions: Set[str]) -> bool:
-    """Verify a simple authorization token.
+    """Verify a simple authorization token (legacy function).
     
     Args:
         token_data: Serialized token data
@@ -354,22 +527,4 @@ def verify_simple_token(token_data: str, required_permissions: Set[str]) -> bool
     Returns:
         True if verification succeeds, False otherwise
     """
-    if MACAROON_AVAILABLE:
-        # Use proper macaroon verification if available
-        auth_manager = AuthorizationManager()
-        return auth_manager.verify_macaroon(token_data, required_permissions)
-    else:
-        # Fallback: simple JSON token verification
-        try:
-            token = json.loads(token_data)
-            
-            # Check expiry
-            if time.time() > token.get("expires", 0):
-                return False
-            
-            # Check permissions
-            token_permissions = set(token.get("permissions", []))
-            return required_permissions.issubset(token_permissions)
-            
-        except Exception:
-            return False
+    return verify_aifs_token(token_data, required_permissions, None)

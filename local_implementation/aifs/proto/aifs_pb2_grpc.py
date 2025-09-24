@@ -95,6 +95,51 @@ class AIFSStub(object):
                 request_serializer=aifs_dot_proto_dot_aifs__pb2.VerifySnapshotRequest.SerializeToString,
                 response_deserializer=aifs_dot_proto_dot_aifs__pb2.VerifySnapshotResponse.FromString,
                 _registered_method=True)
+        self.CreateBranch = channel.unary_unary(
+                '/aifs.v1.AIFS/CreateBranch',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.CreateBranchRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.CreateBranchResponse.FromString,
+                _registered_method=True)
+        self.GetBranch = channel.unary_unary(
+                '/aifs.v1.AIFS/GetBranch',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.GetBranchRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.GetBranchResponse.FromString,
+                _registered_method=True)
+        self.ListBranches = channel.unary_unary(
+                '/aifs.v1.AIFS/ListBranches',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.ListBranchesRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.ListBranchesResponse.FromString,
+                _registered_method=True)
+        self.DeleteBranch = channel.unary_unary(
+                '/aifs.v1.AIFS/DeleteBranch',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.DeleteBranchRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.DeleteBranchResponse.FromString,
+                _registered_method=True)
+        self.GetBranchHistory = channel.unary_unary(
+                '/aifs.v1.AIFS/GetBranchHistory',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.GetBranchHistoryRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.GetBranchHistoryResponse.FromString,
+                _registered_method=True)
+        self.CreateTag = channel.unary_unary(
+                '/aifs.v1.AIFS/CreateTag',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.CreateTagRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.CreateTagResponse.FromString,
+                _registered_method=True)
+        self.GetTag = channel.unary_unary(
+                '/aifs.v1.AIFS/GetTag',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.GetTagRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.GetTagResponse.FromString,
+                _registered_method=True)
+        self.ListTags = channel.unary_unary(
+                '/aifs.v1.AIFS/ListTags',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.ListTagsRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.ListTagsResponse.FromString,
+                _registered_method=True)
+        self.DeleteTag = channel.unary_unary(
+                '/aifs.v1.AIFS/DeleteTag',
+                request_serializer=aifs_dot_proto_dot_aifs__pb2.DeleteTagRequest.SerializeToString,
+                response_deserializer=aifs_dot_proto_dot_aifs__pb2.DeleteTagResponse.FromString,
+                _registered_method=True)
 
 
 class AIFSServicer(object):
@@ -185,6 +230,62 @@ class AIFSServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def CreateBranch(self, request, context):
+        """Branch management
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetBranch(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListBranches(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteBranch(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetBranchHistory(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CreateTag(self, request, context):
+        """Tag management
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetTag(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListTags(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteTag(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_AIFSServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -247,6 +348,51 @@ def add_AIFSServicer_to_server(servicer, server):
                     servicer.VerifySnapshot,
                     request_deserializer=aifs_dot_proto_dot_aifs__pb2.VerifySnapshotRequest.FromString,
                     response_serializer=aifs_dot_proto_dot_aifs__pb2.VerifySnapshotResponse.SerializeToString,
+            ),
+            'CreateBranch': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateBranch,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.CreateBranchRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.CreateBranchResponse.SerializeToString,
+            ),
+            'GetBranch': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetBranch,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.GetBranchRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.GetBranchResponse.SerializeToString,
+            ),
+            'ListBranches': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListBranches,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.ListBranchesRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.ListBranchesResponse.SerializeToString,
+            ),
+            'DeleteBranch': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteBranch,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.DeleteBranchRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.DeleteBranchResponse.SerializeToString,
+            ),
+            'GetBranchHistory': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetBranchHistory,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.GetBranchHistoryRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.GetBranchHistoryResponse.SerializeToString,
+            ),
+            'CreateTag': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateTag,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.CreateTagRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.CreateTagResponse.SerializeToString,
+            ),
+            'GetTag': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetTag,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.GetTagRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.GetTagResponse.SerializeToString,
+            ),
+            'ListTags': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListTags,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.ListTagsRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.ListTagsResponse.SerializeToString,
+            ),
+            'DeleteTag': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteTag,
+                    request_deserializer=aifs_dot_proto_dot_aifs__pb2.DeleteTagRequest.FromString,
+                    response_serializer=aifs_dot_proto_dot_aifs__pb2.DeleteTagResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -574,6 +720,249 @@ class AIFS(object):
             '/aifs.v1.AIFS/VerifySnapshot',
             aifs_dot_proto_dot_aifs__pb2.VerifySnapshotRequest.SerializeToString,
             aifs_dot_proto_dot_aifs__pb2.VerifySnapshotResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CreateBranch(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/CreateBranch',
+            aifs_dot_proto_dot_aifs__pb2.CreateBranchRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.CreateBranchResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetBranch(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/GetBranch',
+            aifs_dot_proto_dot_aifs__pb2.GetBranchRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.GetBranchResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListBranches(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/ListBranches',
+            aifs_dot_proto_dot_aifs__pb2.ListBranchesRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.ListBranchesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DeleteBranch(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/DeleteBranch',
+            aifs_dot_proto_dot_aifs__pb2.DeleteBranchRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.DeleteBranchResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetBranchHistory(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/GetBranchHistory',
+            aifs_dot_proto_dot_aifs__pb2.GetBranchHistoryRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.GetBranchHistoryResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CreateTag(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/CreateTag',
+            aifs_dot_proto_dot_aifs__pb2.CreateTagRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.CreateTagResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetTag(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/GetTag',
+            aifs_dot_proto_dot_aifs__pb2.GetTagRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.GetTagResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListTags(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/ListTags',
+            aifs_dot_proto_dot_aifs__pb2.ListTagsRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.ListTagsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DeleteTag(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/aifs.v1.AIFS/DeleteTag',
+            aifs_dot_proto_dot_aifs__pb2.DeleteTagRequest.SerializeToString,
+            aifs_dot_proto_dot_aifs__pb2.DeleteTagResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -4,6 +4,7 @@ Implements content-addressed storage using BLAKE3 hashing and AES-256-GCM encryp
 """
 
 import os
+import json
 import pathlib
 import shutil
 import blake3
@@ -11,6 +12,8 @@ from typing import Dict, List, Optional, Union, BinaryIO
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from .compression import CompressionService
+from .kms import KMS, KMSKey
 
 
 class StorageBackend:
@@ -21,25 +24,36 @@ class StorageBackend:
     """
     
     def __init__(self, root_dir: Union[str, pathlib.Path], encryption_key: Optional[bytes] = None,
-                 kms_key_id: Optional[str] = None):
+                 kms_key_id: Optional[str] = None, compression_level: int = 1,
+                 kms: Optional[KMS] = None):
         """Initialize the storage backend.
         
         Args:
             root_dir: Root directory for storage
             encryption_key: Optional encryption key (generated if None)
             kms_key_id: Optional KMS key ID for envelope encryption
+            compression_level: zstd compression level (1-22, default 1 as per spec)
+            kms: Optional KMS instance for envelope encryption
         """
         self.root_dir = pathlib.Path(root_dir)
         self.root_dir.mkdir(parents=True, exist_ok=True)
         
-        # Store KMS key ID for envelope encryption
+        # Initialize KMS for envelope encryption
+        self.kms = kms or KMS(str(self.root_dir / "kms"))
         self.kms_key_id = kms_key_id or "aifs-default-key"
         
-        # Generate encryption key if not provided
+        # Ensure KMS key exists
+        if not self.kms.get_key(self.kms_key_id):
+            self.kms.create_key(self.kms_key_id, key_type="AES-256")
+        
+        # Generate encryption key if not provided (for backward compatibility)
         if encryption_key is None:
             encryption_key = os.urandom(32)  # 256-bit key for AES-256
         
         self.encryption_key = encryption_key
+        
+        # Initialize compression service
+        self.compression_service = CompressionService(compression_level)
         
         # Create storage subdirectories
         self.chunks_dir = self.root_dir / "chunks"
@@ -66,7 +80,7 @@ class StorageBackend:
         Returns:
             Hex-encoded BLAKE3 hash of the data
         """
-        # Compute BLAKE3 hash
+        # Compute BLAKE3 hash of original data (before compression)
         hash_hex = blake3.blake3(data).hexdigest()
         
         # Create path with parent directories
@@ -75,8 +89,11 @@ class StorageBackend:
         
         # Only write if doesn't exist (content-addressed, so same hash = same content)
         if not path.exists():
-            # Encrypt data with AES-256-GCM
-            encrypted_data = self._encrypt_chunk(data)
+            # Compress data with zstd
+            compressed_data = self.compression_service.compress(data)
+            
+            # Encrypt compressed data with AES-256-GCM
+            encrypted_data = self._encrypt_chunk(compressed_data)
             path.write_bytes(encrypted_data)
             
             # Store KMS key ID in metadata file
@@ -89,34 +106,50 @@ class StorageBackend:
         return hash_hex
     
     def _encrypt_chunk(self, data: bytes) -> bytes:
-        """Encrypt a chunk of data using AES-256-GCM.
+        """Encrypt a chunk of data using AES-256-GCM with KMS envelope encryption.
         
         Args:
             data: Raw data to encrypt
             
         Returns:
-            Encrypted data with nonce prepended
+            Encrypted data with envelope encryption metadata
         """
         if not data:
             return b""
         
-        # Generate a new nonce for each chunk
-        nonce = os.urandom(12)
+        # Generate a new data key for this chunk
+        data_key, encrypted_data_key, envelope_nonce = self.kms.generate_data_key(self.kms_key_id)
         
-        # Create cipher
-        cipher = AESGCM(self.encryption_key)
+        # Generate a new nonce for the chunk encryption
+        chunk_nonce = os.urandom(12)
+        
+        # Create cipher with the data key
+        cipher = AESGCM(data_key)
         
         # Encrypt the data
-        ciphertext = cipher.encrypt(nonce, data, None)
+        ciphertext = cipher.encrypt(chunk_nonce, data, None)
         
-        # Return nonce + ciphertext
-        return nonce + ciphertext
+        # Create envelope with metadata
+        envelope = {
+            "kms_key_id": self.kms_key_id,
+            "encrypted_data_key": encrypted_data_key.hex(),
+            "envelope_nonce": envelope_nonce.hex(),
+            "chunk_nonce": chunk_nonce.hex(),
+            "ciphertext": ciphertext.hex()
+        }
+        
+        # Serialize envelope
+        envelope_json = json.dumps(envelope).encode('utf-8')
+        
+        # Return envelope length + envelope + ciphertext
+        envelope_length = len(envelope_json)
+        return envelope_length.to_bytes(4, 'big') + envelope_json + ciphertext
     
     def _decrypt_chunk(self, encrypted_data: bytes) -> bytes:
-        """Decrypt a chunk of data using AES-256-GCM.
+        """Decrypt a chunk of data using AES-256-GCM with KMS envelope encryption.
         
         Args:
-            encrypted_data: Encrypted data with nonce prepended
+            encrypted_data: Encrypted data with envelope encryption metadata
             
         Returns:
             Decrypted data
@@ -125,15 +158,49 @@ class StorageBackend:
             return b""
         
         try:
-            # Extract nonce and ciphertext
-            nonce = encrypted_data[:12]
-            ciphertext = encrypted_data[12:]
+            # Check if this is new envelope format or legacy format
+            if len(encrypted_data) < 4:
+                return b""
             
-            # Create cipher
-            cipher = AESGCM(self.encryption_key)
+            # Try to read envelope length
+            envelope_length = int.from_bytes(encrypted_data[:4], 'big')
             
-            # Decrypt the data
-            return cipher.decrypt(nonce, ciphertext, None)
+            # Check if this looks like envelope format
+            if envelope_length > 0 and envelope_length < len(encrypted_data) - 4:
+                # New envelope format
+                envelope_json = encrypted_data[4:4 + envelope_length]
+                ciphertext = encrypted_data[4 + envelope_length:]
+                
+                # Parse envelope
+                envelope = json.loads(envelope_json.decode('utf-8'))
+                
+                # Decrypt the data key
+                encrypted_data_key = bytes.fromhex(envelope["encrypted_data_key"])
+                envelope_nonce = bytes.fromhex(envelope["envelope_nonce"])
+                chunk_nonce = bytes.fromhex(envelope["chunk_nonce"])
+                
+                data_key = self.kms.decrypt_data_key(
+                    encrypted_data_key, envelope_nonce, envelope["kms_key_id"]
+                )
+                
+                # Create cipher with the data key
+                cipher = AESGCM(data_key)
+                
+                # Decrypt the data
+                return cipher.decrypt(chunk_nonce, ciphertext, None)
+            else:
+                # Legacy format - try old decryption method
+                if len(encrypted_data) >= 12:
+                    nonce = encrypted_data[:12]
+                    ciphertext = encrypted_data[12:]
+                    
+                    # Create cipher with legacy key
+                    cipher = AESGCM(self.encryption_key)
+                    
+                    # Decrypt the data
+                    return cipher.decrypt(nonce, ciphertext, None)
+                else:
+                    return b""
             
         except Exception as e:
             print(f"Decryption failed: {e}")
@@ -152,7 +219,17 @@ class StorageBackend:
         path = self._hash_to_path(hash_hex)
         if path.exists():
             encrypted_data = path.read_bytes()
-            return self._decrypt_chunk(encrypted_data)
+            # Decrypt data
+            compressed_data = self._decrypt_chunk(encrypted_data)
+            if compressed_data is None:
+                return None
+            
+            # Decompress data with zstd
+            try:
+                return self.compression_service.decompress(compressed_data)
+            except Exception:
+                # If decompression fails, try to return raw data (backward compatibility)
+                return compressed_data
         return None
     
     def exists(self, hash_hex: str) -> bool:
