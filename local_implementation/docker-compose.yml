@@ -1,102 +1,54 @@
 version: '3.8'
 
 services:
-  # AIFS Production Server
-  aifs-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: aifs:latest
-    container_name: aifs-server
+  # Production AIFS Server
+  aifs-prod:
+    image: uriber/aifs:latest
+    container_name: aifs-production
     ports:
       - "50051:50051"
     volumes:
-      - aifs-data:/data/aifs
-      - aifs-logs:/app/logs
-    restart: unless-stopped
+      - aifs-prod-data:/data/aifs
     environment:
-      - PYTHONUNBUFFERED=1
-      - AIFS_DATA_DIR=/data/aifs
-      - AIFS_PORT=50051
+      - AIFS_MODE=production
       - AIFS_HOST=0.0.0.0
-      - AIFS_LOG_LEVEL=INFO
-    command: python start_server.py --storage-dir /data/aifs --port 50051
+      - AIFS_PORT=50051
+      - AIFS_STORAGE_DIR=/data/aifs
+      - AIFS_MAX_WORKERS=10
+      - AIFS_COMPRESSION_LEVEL=1
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "/app/healthcheck.sh"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-    networks:
-      - aifs-network
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 512M
-          cpus: '0.5'
+      start_period: 5s
 
-  # AIFS Development Server (with gRPC reflection)
+  # Development AIFS Server (with gRPC reflection)
   aifs-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: aifs:latest
-    container_name: aifs-dev
+    image: uriber/aifs:latest
+    container_name: aifs-development
     ports:
-      - "50052:50051"
+      - "50052:50051"  # Different port to avoid conflict
     volumes:
       - aifs-dev-data:/data/aifs
-      - aifs-logs:/app/logs
-    restart: unless-stopped
     environment:
-      - PYTHONUNBUFFERED=1
-      - AIFS_DATA_DIR=/data/aifs
-      - AIFS_PORT=50051
+      - AIFS_MODE=development
       - AIFS_HOST=0.0.0.0
-      - AIFS_LOG_LEVEL=DEBUG
-    command: python start_server.py --dev --storage-dir /data/aifs --port 50051
+      - AIFS_PORT=50051
+      - AIFS_STORAGE_DIR=/data/aifs
+      - AIFS_MAX_WORKERS=5
+      - AIFS_COMPRESSION_LEVEL=1
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "/app/healthcheck.sh"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-    networks:
-      - aifs-network
-    profiles:
-      - dev
-
-  # AIFS CLI Client (for testing and administration)
-  aifs-cli:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: aifs:latest
-    container_name: aifs-cli
-    volumes:
-      - aifs-data:/data/aifs
-    environment:
-      - PYTHONUNBUFFERED=1
-      - AIFS_SERVER=localhost:50051
-    command: python aifs_cli.py --help
-    networks:
-      - aifs-network
-    profiles:
-      - cli
-    depends_on:
-      - aifs-server
+      start_period: 5s
 
 volumes:
-  aifs-data:
+  aifs-prod-data:
     driver: local
   aifs-dev-data:
     driver: local
-  aifs-logs:
-    driver: local
-
-networks:
-  aifs-network:
-    driver: bridge

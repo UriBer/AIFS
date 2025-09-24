@@ -69,17 +69,50 @@ The local implementation follows a simplified version of the architecture descri
 ## Getting Started
 
 ### Option 1: Docker Hub (Recommended)
-```bash
-# Pull and run the latest version from Docker Hub
-docker pull uriber/aifs:latest
-docker run -p 50051:50051 -v aifs-data:/data/aifs uriber/aifs:latest
 
-# Or use a specific version
-docker pull uriber/aifs:v0.1.0-alpha
-docker run -p 50051:50051 -v aifs-data:/data/aifs uriber/aifs:v0.1.0-alpha
+#### Production Mode (Default)
+```bash
+# Pull and run in production mode
+docker pull uriber/aifs:latest
+docker run -d --name aifs-server \
+  -p 50051:50051 \
+  -v aifs-data:/data/aifs \
+  uriber/aifs:latest
 
 # Test the API
 grpcurl -plaintext localhost:50051 grpc.health.v1.Health/Check
+```
+
+#### Development Mode (with gRPC reflection)
+```bash
+# Run in development mode for API exploration
+docker run -d --name aifs-dev \
+  -p 50051:50051 \
+  -v aifs-data:/data/aifs \
+  -e AIFS_MODE=development \
+  uriber/aifs:latest
+
+# Test gRPC reflection
+grpcurl -plaintext localhost:50051 list
+```
+
+#### Docker Compose (Both modes)
+```bash
+# Start both development and production servers
+docker-compose up -d
+# Production: localhost:50051, Development: localhost:50052
+```
+
+#### Environment Variables
+```bash
+# Custom configuration
+docker run -d --name aifs-custom \
+  -p 50051:50051 \
+  -v aifs-data:/data/aifs \
+  -e AIFS_MODE=production \
+  -e AIFS_MAX_WORKERS=20 \
+  -e AIFS_COMPRESSION_LEVEL=3 \
+  uriber/aifs:latest
 ```
 
 ### Option 2: Local Docker Build

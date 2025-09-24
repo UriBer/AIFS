@@ -90,7 +90,9 @@ tests/
 Dockerfile
 docker-compose.yml
 .dockerignore
+# Keep docker-entrypoint.sh for the container
 docker-*.sh
+!docker-entrypoint.sh
 
 # Build artifacts
 install.py

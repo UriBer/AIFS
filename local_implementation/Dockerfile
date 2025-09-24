@@ -50,8 +50,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
+# Copy source code (includes docker-entrypoint.sh)
 COPY . .
+
+# Setup entrypoint script
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Compile protobuf definitions
 RUN python compile_proto.py
@@ -87,6 +90,10 @@ ENV PYTHONPATH=/app
 ENV AIFS_DATA_DIR=/data/aifs
 ENV AIFS_PORT=50051
 ENV AIFS_HOST=0.0.0.0
+ENV AIFS_MODE=production
+ENV AIFS_STORAGE_DIR=/data/aifs
+ENV AIFS_MAX_WORKERS=10
+ENV AIFS_COMPRESSION_LEVEL=1
 
-# Run server
-CMD ["python", "start_server.py", "--storage-dir", "/data/aifs", "--port", "50051"]
+# Use entrypoint script
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
