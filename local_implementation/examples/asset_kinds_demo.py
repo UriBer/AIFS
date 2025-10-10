@@ -335,7 +335,7 @@ def main():
     print("   1. Install missing dependencies: pip install pyarrow flatbuffers")
     print("   2. Run the AIFS server: aifs server --dev")
     print("   3. Test with the gRPC API explorer tools")
-    print("   4. Check the MISSING_FEATURES.md for implementation status")
+    print("   4. Check the docs/implementation/MISSING_FEATURES.md for implementation status")
 
 
 if __name__ == "__main__":

@@ -301,7 +301,7 @@ export GRPC_TRACE=all
 ## 📚 **Additional Resources**
 
 - **API Documentation**: `API.md`
-- **Missing Features**: `MISSING_FEATURES.md`
+- **Missing Features**: `../implementation/MISSING_FEATURES.md`
 - **gRPC Explorer Guide**: `grpc_exploration_guide.md`
 - **Docker Usage**: `dockerhub/README.md`
 

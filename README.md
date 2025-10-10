@@ -510,8 +510,8 @@ class VectorDB:
 
 - [Architecture Specification](docs/spec/rfc/0001-aifs-architecture.md)
 - [Implementation Guide](local_implementation/README.md)
-- [API Documentation](local_implementation/API.md)
-- [Docker Documentation](local_implementation/DOCKER.md)
+- [API Documentation](local_implementation/docs/api/API.md)
+- [Docker Documentation](local_implementation/docs/docker/DOCKER.md)
 - [Changelog](CHANGELOG.md)
 - [Client App Specification](local_implementation/docs/AIFS_CLIENT_APP_SPEC.md)
 
@@ -556,7 +556,7 @@ This implementation is provided under the same license as the main project. See 
 ## 📖 Documentation
 
 - **Architecture Specification**: See [docs/spec/rfc/0001-aifs-architecture.md](docs/spec/rfc/0001-aifs-architecture.md)
-- **Implementation Guide**: See [local_implementation/README_IMPLEMENTATION.md](local_implementation/README_IMPLEMENTATION.md)
+- **Implementation Guide**: See [local_implementation/docs/implementation/README_IMPLEMENTATION.md](local_implementation/docs/implementation/README_IMPLEMENTATION.md)
 - **Changelog**: See [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
 **Note**: This implementation prioritizes functionality and security over performance optimization. For production deployment, additional performance tuning and security hardening is recommended.

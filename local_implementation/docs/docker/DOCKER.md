@@ -349,8 +349,8 @@ services:
 
 - [Docker Documentation](https://docs.docker.com/)
 - [Docker Compose Reference](https://docs.docker.com/compose/)
-- [AIFS API Documentation](API.md)
-- [AIFS Architecture](README.md)
+- [AIFS API Documentation](../api/API.md)
+- [AIFS Architecture](../../README.md)
 
 ## 🤝 Support
 
